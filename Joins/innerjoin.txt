@@ -1,0 +1,34 @@
+1. select e.first_name , d.department_name from employees e inner join departments d on e.department_id = d.department_id ;
+
+2. select e.first_name , d.department_name , l.city from employees e inner join departments d on e.department_id = d.department_id inner join locations l on l.location_id = d.location_id  ;
+
+3. select e.first_name  , l.city , c.country_name from employees e inner join departments d on e.department_id = d.department_id inner join locations l on l.location_id = d.location_id  inner join countries c on l.country_id = c.country_id ;
+
+4. select e.first_name  , c.country_name from employees e inner join departments d on e.department_id = d.department_id inner join locations l on l.location_id = d.location_id  inner join countries c on l.country_id = c.country_id ;
+
+5. select e.first_name  ,r.region_name from employees e inner join departments d on e.department_id = d.department_id inner join locations l on l.location_id = d.location_id  inner join countries c on l.country_id = c.country_id inner join regions r on r.region_id = c.region_id ;
+
+6. select e.first_name , j.job_title from employees e inner join jobs j on  e.job_id = j.job_id ;
+
+7. select e.first_name  , c.country_name , r.region_name from employees e inner join departments d on e.department_id = d.department_id inner join locations l on l.location_id = d.location_id  inner join countries c on l.country_id = c.country_id inner join regions r on r.region_id = c.region_id ;
+
+8. select e.first_name  ,d.department_name , l.city ,  c.country_name , r.region_name from employees e inner join departments d on e.department_id = d.department_id inner join locations l on l.location_id = d.location_id  inner join countries c on l.country_id = c.country_id inner join regions r on r.region_id = c.region_id ;
+
+9. select count(*) , d.location_id from employees e inner join departments d on e.department_id = d.department_id group by d.location_id ;
+	select count(*) , d.loc from emp e inner join dept d on e.deptno = d.deptno group by d.loc ;
+
+
+10. select sum(e.salary) , d.location_id from employees e inner join departments d on e.department_id = d.department_id group by d.location_id ;
+	select sum(e.sal) , d.loc from emp e inner join dept d on e.deptno = d.deptno group by d.loc ;
+
+11. select e.ename , e.sal , g.grade from emp e inner join salgrade g  on e.sal between g.losal and hisal ;
+
+12.  select e.ename , e.sal , g.grade , d.loc from emp e inner join salgrade g  on e.sal between g.losal and hisal inner join dept d on e.deptno = d.deptno ;
+
+13. select ename , length(ename) from (select ename , length(ename) from emp where length(ename) = (select min(length(ename)) from emp ) order by ename) where rownum = 1  ;
+
+14. select ename , length(ename) from (select ename , length(ename) from emp where length(ename) = (select max(length(ename)) from emp ) order by ename  ) where rownum = 1  ;
+	select ename , length(ename) from (select ename , length(ename) from emp where length(ename) = (select max(length(ename)) from emp ) order by ename desc ) where rownum = 1  ;
+
+15.select * from (select emp.* from emp where hiredate = (select(max(hiredate)) from emp ) ) where rownum = 1 ;
+

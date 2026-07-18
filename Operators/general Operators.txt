@@ -1,0 +1,5 @@
+nvl = Null Value Logic if are1 is null then arg 2 i substitute 
+ select ename , sal + nvl(comm , 0) as total from emp ;
+
+nvl2 = it have 3 arguments if 1 is null then 3 if 1 is not null then 2 
+ select ename , nvl2(comm , 'earning sal' , ' no comm' ) from emp ;
