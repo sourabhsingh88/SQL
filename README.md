@@ -1,6 +1,6 @@
 # 📘 Oracle SQL & DBMS – Complete Notes
 
-A complete, structured reference covering DBMS basics, Data Types, Constraints, Functions, Joins, Operators, Subqueries, and Query Clauses.
+A complete, structured reference covering DBMS basics, Data Types, Constraints, DDL, DML, DCL, TCL, Functions, Joins, Operators, Subqueries, and Query Clauses.
 
 ---
 
@@ -9,12 +9,22 @@ A complete, structured reference covering DBMS basics, Data Types, Constraints, 
 1. [DBMS & SQL Basics](#1-dbms--sql-basics)
 2. [Data Types](#2-data-types)
 3. [Constraints](#3-constraints)
-4. [SQL Functions](#4-sql-functions)
-5. [SQL Joins](#5-sql-joins)
-6. [SQL Operators](#6-sql-operators)
-7. [Subqueries & ROWNUM](#7-subqueries--rownum)
-8. [WHERE, GROUP BY, HAVING & ORDER BY](#8-where-group-by-having--order-by)
-9. [SQL\*Plus Commands](#9-sqlplus-commands)
+4. [DDL – Data Definition Language](#4-ddl--data-definition-language)
+5. [DML – Data Manipulation Language](#5-dml--data-manipulation-language)
+6. [DQL – Selection & Projection](#6-dql--selection--projection)
+7. [SQL Functions](#7-sql-functions)
+8. [SQL Joins](#8-sql-joins)
+9. [Outer Joins – Practical Walkthrough](#9-outer-joins--practical-walkthrough)
+10. [Self Join – Family Tree Example](#10-self-join--family-tree-example)
+11. [SQL Operators](#11-sql-operators)
+12. [Subqueries & ROWNUM](#12-subqueries--rownum)
+13. [WHERE, GROUP BY, HAVING & ORDER BY](#13-where-group-by-having--order-by)
+14. [TCL – Transaction Control Language](#14-tcl--transaction-control-language)
+15. [DCL – Data Control Language](#15-dcl--data-control-language)
+16. [Copying Tables (CTAS) & Creating New Users](#16-copying-tables-ctas--creating-new-users)
+17. [SQL\*Plus Commands](#17-sqlplus-commands)
+18. [🔑 Interview Quick-Fire Points](#-interview-quick-fire-points)
+19. [💼 Most Asked Interview Questions](#-most-asked-interview-questions)
 
 ---
 
@@ -93,7 +103,7 @@ Stores data in the form of **JSON** or **XML**.
 
 | Language | Full Form | Purpose | Common Commands |
 |---|---|---|---|
-| **DDL** | Data Definition Language | Defines/modifies structure of DB objects | `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `RENAME` |
+| **DDL** | Data Definition Language | Defines/modifies structure of DB objects | `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `RENAME`, `FLASHBACK`, `PURGE` |
 | **DML** | Data Manipulation Language | Manipulates data inside tables | `INSERT`, `UPDATE`, `DELETE` |
 | **DQL** | Data Query Language | Retrieves/queries data | `SELECT` |
 | **DCL** | Data Control Language | Controls access/permissions on the DB | `GRANT`, `REVOKE` |
@@ -104,6 +114,8 @@ Stores data in the form of **JSON** or **XML**.
 - DDL, DML, DCL, DQL, TCL
 - Functions, `GROUP BY`, `WHERE`, `ORDER BY`, `HAVING`, `JOIN`, Subquery
 - Normalization
+
+[⬆ Back to top](#-table-of-contents)
 
 ---
 
@@ -218,6 +230,8 @@ photo BLOB
 | CLOB | Large text |
 | BLOB | Images, videos, files |
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
 ## 3. Constraints
@@ -310,9 +324,343 @@ CREATE TABLE employee (
 - A table *can* exist without a Primary Key, though it's not recommended.
 - FOREIGN KEY creates a **child–parent** relationship between two tables.
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
-## 4. SQL Functions
+## 4. DDL – Data Definition Language
+
+**DDL** is a type of SQL language used to **define objects** in the database (tables, views, sequences, procedures, etc).
+
+DDL Commands: `CREATE`, `RENAME`, `ALTER`, `TRUNCATE`, `DROP`, `FLASHBACK`, `PURGE`
+
+### 1) CREATE
+`CREATE` is a DDL command used to create a table, view, sequence, procedure, etc.
+
+**Table Creation Syntax:**
+```sql
+CREATE TABLE tabname (
+    coln1 datatype constraint,
+    coln2 datatype(size) constraint,
+    ...
+);
+```
+
+```sql
+CREATE TABLE stud (sid NUMBER PRIMARY KEY, name VARCHAR2(20));
+-- Table created.
+```
+
+### 2) RENAME
+`RENAME` is a DDL command used to rename a table.
+```sql
+RENAME oldtabname TO newtabname;
+```
+```sql
+RENAME emp TO student;
+```
+
+### 3) ALTER
+`ALTER` is a DDL command used to alter (modify) the structure of an existing table.
+
+| Operation | Syntax |
+|---|---|
+| Add column | `ALTER TABLE tabn ADD coln datatype constraint;` |
+| Rename column | `ALTER TABLE tabn RENAME COLUMN oldcoln TO newcoln;` |
+| Drop column | `ALTER TABLE tabn DROP COLUMN columnname;` |
+| Modify column | `ALTER TABLE tabname MODIFY colname datatype constraint;` |
+
+```sql
+-- Add column
+ALTER TABLE stud ADD phno NUMBER(10);
+-- Table altered
+
+-- Modify column
+ALTER TABLE stud MODIFY email VARCHAR2(25);
+-- Table altered
+
+-- Drop column
+ALTER TABLE stud DROP COLUMN email;
+-- Table altered
+```
+
+### 4) TRUNCATE
+`TRUNCATE` deletes **all records** from a table **permanently**. It does **not** affect the structure of the table, and records **cannot be recovered**.
+```sql
+TRUNCATE TABLE tabname;
+```
+```sql
+TRUNCATE TABLE stud;
+-- Table truncated.
+
+SELECT * FROM stud;
+-- no rows selected
+```
+
+### 5) DROP
+`DROP` is a DDL command used to **delete a table**. The table gets moved to the **recycle bin** (it isn't gone forever — yet).
+```sql
+DROP TABLE tabname;
+```
+```sql
+DROP TABLE student;
+-- Table dropped.
+```
+
+### 6) FLASHBACK
+`FLASHBACK` is a DDL command used to **retrieve a table back from the recycle bin**.
+```sql
+FLASHBACK TABLE tabn TO BEFORE DROP;
+```
+```sql
+FLASHBACK TABLE stud TO BEFORE DROP;
+-- Flashback complete.
+```
+
+**Check what's in the recycle bin:**
+```sql
+SELECT original_name FROM recyclebin;
+```
+| original_name |
+|---|
+| stud |
+| movie |
+| Director |
+
+### 7) PURGE
+`PURGE` is a DDL command used to **permanently delete a table from the recycle bin**. The table **must be present** in the recycle bin (i.e. must have been dropped first).
+```sql
+PURGE TABLE tabname;
+```
+```sql
+DROP TABLE stud;
+-- Table dropped.
+
+PURGE TABLE stud;
+-- Table purged.
+```
+
+⚠️ If you try to `PURGE` a table that was **never dropped**, Oracle throws:
+```text
+ORA-38307: object not in RECYCLEBIN
+```
+👉 You must `DROP` the table first (which sends it to the recycle bin), and *then* `PURGE` it.
+
+### Full DDL Walkthrough Example
+
+```sql
+-- 1) Create
+CREATE TABLE stud (sid NUMBER PRIMARY KEY, name VARCHAR2(20));
+-- Table created.
+
+-- 2) Insert some data
+INSERT INTO stud VALUES (101, 'raju');
+INSERT INTO stud VALUES (102, 'rani');
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | raju |
+| 102 | rani |
+
+```sql
+-- 3) Truncate
+TRUNCATE TABLE stud;
+-- Table truncated.
+
+SELECT * FROM stud;
+-- no rows selected
+
+-- 4) Insert again
+INSERT INTO stud VALUES (101, 'raju');
+INSERT INTO stud VALUES (102, 'rani');
+
+-- 5) Drop
+DROP TABLE stud;
+-- Table dropped.
+
+-- 6) Check recycle bin
+SELECT original_name FROM recyclebin;
+-- stud, movie, Director
+
+-- 7) Flashback (retrieve dropped table)
+FLASHBACK TABLE stud TO BEFORE DROP;
+-- Flashback complete.
+
+-- 8) Drop again, then purge permanently
+DROP TABLE stud;
+PURGE TABLE stud;
+-- Table purged.
+```
+
+### DDL Command Summary
+
+| Command | Purpose | Structure affected? | Recoverable? |
+|---|---|---|---|
+| `CREATE` | Create new object | — | — |
+| `RENAME` | Rename table | No | — |
+| `ALTER` | Add/Modify/Drop/Rename column | Yes | — |
+| `TRUNCATE` | Delete all rows, keep structure | No | ❌ Not recoverable |
+| `DROP` | Delete table (→ recycle bin) | Yes | ✅ via FLASHBACK |
+| `FLASHBACK` | Restore dropped table | — | — |
+| `PURGE` | Permanently remove from recycle bin | Yes | ❌ Not recoverable |
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 5. DML – Data Manipulation Language
+
+**DML** is a type of SQL language used to **manipulate data** stored in tables.
+
+DML Commands: `INSERT`, `UPDATE`, `DELETE`
+
+### 1) INSERT
+`INSERT` is a DML command used to insert records into a table.
+```sql
+INSERT INTO tabn VALUES (v1, v2, ...);
+INSERT INTO tabn (col1, col2) VALUES (v1, v2, ...);
+```
+```sql
+INSERT INTO stud VALUES (101, 'ramesh');
+INSERT INTO stud (sid, name) VALUES (102, 'ramya');
+```
+
+### 2) UPDATE
+`UPDATE` is a DML command used to update existing records.
+⚠️ **Always use a `WHERE` condition** — otherwise every row in the table gets updated.
+```sql
+UPDATE tabn SET col=val, col=val, ...
+WHERE cond;
+```
+```sql
+-- Increase salary by 10% for clerks
+UPDATE emp SET sal = sal + sal * 0.10 WHERE job = 'CLERK';
+```
+
+### 3) DELETE
+`DELETE` is a DML command used to delete records.
+⚠️ **Always use a `WHERE` condition** — otherwise every row is deleted.
+```sql
+DELETE FROM tabn WHERE cond;
+```
+```sql
+DELETE FROM emp WHERE job = 'CLERK';
+```
+
+### DML Command Summary
+
+| Command | Purpose | WHERE mandatory? |
+|---|---|---|
+| `INSERT` | Add new records | No |
+| `UPDATE` | Modify existing records | ⚠️ Strongly recommended |
+| `DELETE` | Remove records | ⚠️ Strongly recommended |
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 6. DQL – Selection & Projection
+
+**DQL** (Data Query Language) is used to retrieve data from the database — its primary command is `SELECT`.
+
+### Projection
+**Projection** is a way of retrieving data by selecting only the **required columns**.
+```sql
+SELECT * / DISTINCT coln / expression, alias
+FROM tabname;
+```
+
+### DISTINCT
+`DISTINCT` is a SQL clause used to return a **single (unique) value** from multiple duplicate values in a column.
+```sql
+SELECT DISTINCT coln/expr FROM tabn;
+```
+```sql
+SELECT DISTINCT sal FROM emp;
+```
+| distinct sal |
+|---|
+| 300 |
+| 200 |
+| 400 |
+
+### Expression
+An **Expression** is a combination of an **operator** and **operands**, or a statement that produces a result.
+```sql
+-- Example expression
+a + b = c
+```
+
+### Alias
+An **Alias** is an **alternative name** given to an existing column or expression.
+
+Ways to write an alias:
+```sql
+coln/exp AS "alias-name"
+coln/exp "alias-name"
+coln/exp AS alias-name
+coln/exp alias-name
+```
+
+### Selection
+**Selection** is a way of selecting **rows** and displaying data that satisfies a given condition.
+```sql
+SELECT * / DISTINCT col/expression alias
+FROM tabname
+WHERE condition;
+```
+
+### Order of Execution
+| Step | Clause | Purpose |
+|---|---|---|
+| 1 | `FROM` | Checks whether the table is present or not |
+| 2 | `WHERE` | Filters table records based on condition(s) |
+| 3 | `SELECT` | Selects & displays rows one by one |
+
+> Multiple conditions are allowed in the `WHERE` clause using `AND` / `OR`.
+
+### Practice Queries
+
+```sql
+-- Q1: Display all details of emp when emp name is "Smith"
+SELECT * FROM emp WHERE ename = 'SMITH';
+
+-- Q2: Display all details when deptno is 20
+SELECT * FROM emp WHERE deptno = 20;
+
+-- Q3: Display all details when job is "clerk"
+SELECT * FROM emp WHERE job = 'CLERK';
+```
+
+### Computed Column / Alias Practice
+
+```sql
+-- Quarterly salary
+SELECT ename, (sal*12)/4 AS quarterly_sal FROM emp;
+
+-- Salary with a flat bonus of 300
+SELECT ename, sal + 300 AS sal_bonus FROM emp;
+
+-- Salary with 10% increment
+SELECT ename, (sal + (sal * 0.10)) AS incremented_sal FROM emp;
+
+-- Salary with 30% decrement
+SELECT ename, (sal - (sal * 0.30)) AS decreased_sal FROM emp;
+
+-- Annual salary with 15% increment
+SELECT ename, (sal*12) + (sal*12*0.15) AS annual_salary FROM emp;
+
+-- Annual salary with 10% decrement
+SELECT ename, (sal*12) - (sal*12*0.10) AS annual_salary FROM emp;
+```
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 7. SQL Functions
 
 A **function** is a block of code used to perform a specific task.
 
@@ -409,9 +757,11 @@ SELECT SUM(sal) FROM emp WHERE job='SALESMAN';
 SELECT ename, SUM(sal) FROM emp GROUP BY ename;
 ```
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
-## 5. SQL Joins
+## 8. SQL Joins
 
 A **JOIN** combines data from two or more tables based on a common column/relationship. Since normalization stores related data across different tables, joins are used to retrieve meaningful combined information.
 
@@ -473,7 +823,7 @@ SELECT ename, dname FROM emp NATURAL JOIN dept;
 - ⚠️ Risky if multiple columns unintentionally share the same name — can cause wrong/unexpected joins. Used less often in practice for this reason.
 
 ### 5) Self Join
-A table joined with **itself**, using aliases — commonly used for employee–manager relationships (or any hierarchical data).
+A table joined with **itself**, using aliases — commonly used for employee–manager relationships (or any hierarchical data). See a full worked example in [Section 10](#10-self-join--family-tree-example).
 ```sql
 -- ANSI
 SELECT e.ename Employee, m.ename Manager FROM emp e JOIN emp m ON e.mgr=m.empno;
@@ -486,31 +836,41 @@ SELECT e.ename Employee, m.ename Manager FROM emp e, emp m WHERE e.mgr=m.empno;
 SELECT DISTINCT e.sal FROM emp e, emp e1 WHERE e.sal = e1.sal AND e.empno != e1.empno;
 ```
 
-### 6) Left Outer Join
-Returns **all rows from the left table** + matching rows from the right table (NULL where no match).
+### 6), 7), 8) Outer Joins — Introduction
+
+There are **three types of Outer Joins**:
+- **Left Outer Join**
+- **Right Outer Join**
+- **Full Outer Join**
+
+An **Outer Join** is a type of SQL join that returns the **matched records** as well as the **unmatched records with NULL values**.
+
+**Left Outer Join** → returns matched records from the **left table & right table**, plus unmatched records from the **left table** with NULL values.
 ```sql
 -- ANSI
-SELECT e.ename, d.dname FROM emp e LEFT OUTER JOIN dept d ON e.deptno=d.deptno;
+SELECT * FROM tab1 LEFT OUTER JOIN tab2 ON cond;
 -- Oracle old
-SELECT e.ename, d.dname FROM emp e, dept d WHERE e.deptno=d.deptno(+);
+SELECT * FROM tab1, tab2 WHERE tab1.col = tab2.col(+);
 ```
 
-### 7) Right Outer Join
-Returns **all rows from the right table** + matching rows from the left table (NULL where no match).
+**Right Outer Join** → returns matched records from the **right table & left table**, plus unmatched records from the **right table** with NULL values.
 ```sql
 -- ANSI
-SELECT e.ename, d.dname FROM emp e RIGHT OUTER JOIN dept d ON e.deptno=d.deptno;
+SELECT * FROM tab1 RIGHT OUTER JOIN tab2 ON cond;
 -- Oracle old
-SELECT e.ename, d.dname FROM emp e, dept d WHERE e.deptno(+)=d.deptno;
+SELECT * FROM tab1, tab2 WHERE tab1.col(+) = tab2.col;
 ```
 
-### 8) Full Outer Join
-Returns **all rows from both tables** — matched rows merged, unmatched rows show NULL.
+**Full Outer Join** → returns matched records from **both tables**, plus unmatched records from **both** the left table and the right table with NULL values.
 ```sql
 -- ANSI
-SELECT e.ename, d.dname FROM emp e FULL OUTER JOIN dept d ON e.deptno=d.deptno;
+SELECT * FROM tab1 FULL JOIN tab2 ON cond;
+-- Oracle old syntax: not supported — use LEFT JOIN UNION RIGHT JOIN instead
 ```
-Not supported using the `(+)` operator in old Oracle syntax — traditionally achieved via `LEFT OUTER JOIN UNION RIGHT OUTER JOIN`.
+
+> 🧠 **Memory trick:** The `(+)` symbol goes on the side that is *missing/deficient* — i.e. it marks the table that gets NULL-padded for unmatched rows.
+
+Full detailed examples with sample data are worked through in [Section 9](#9-outer-joins--practical-walkthrough).
 
 ### ANSI vs Oracle Old Syntax
 
@@ -534,9 +894,174 @@ Not supported using the `(+)` operator in old Oracle syntax — traditionally ac
 | Right Outer Join | Yes | All right rows |
 | Full Outer Join | Yes | All rows from both tables |
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
-## 6. SQL Operators
+## 9. Outer Joins – Practical Walkthrough
+
+Sample data used throughout this section:
+
+**Student table**
+
+| sid | name | subid |
+|---|---|---|
+| 1 | indu | s3 |
+| 2 | bindu | — |
+| 3 | dindu | s1 |
+| 4 | chondu | s3 |
+| 5 | nendu | — |
+
+**Subject table**
+
+| subid | sname |
+|---|---|
+| s1 | Java |
+| s2 | sql |
+| s3 | web |
+| s4 | Python |
+
+### Left Outer Join
+
+Keeps **every student**, even one not registered for any subject.
+```sql
+-- ANSI
+SELECT name, sname FROM student s LEFT OUTER JOIN subject sb ON s.subid = sb.subid;
+
+-- Oracle old
+SELECT name, sname FROM student s, subject sb WHERE s.subid = sb.subid(+);
+```
+
+| name | sname |
+|---|---|
+| indu | web |
+| bindu | — |
+| dindu | Java |
+| chondu | web |
+| nendu | — |
+
+### Right Outer Join
+
+Keeps **every subject**, even one that has no students registered for it.
+```sql
+-- ANSI
+SELECT name, sname FROM student s RIGHT OUTER JOIN subject sb ON s.subid = sb.subid;
+
+-- Oracle old
+SELECT name, sname FROM student s, subject sb WHERE s.subid(+) = sb.subid;
+```
+
+| name | sname |
+|---|---|
+| indu | web |
+| dindu | Java |
+| chondu | web |
+| — | sql |
+| — | Python |
+
+### Full Outer Join
+
+Keeps **every student and every subject**, matched or not.
+```sql
+-- ANSI
+SELECT name, sname FROM student s FULL OUTER JOIN subject sb ON s.subid = sb.subid;
+```
+
+| name | sname |
+|---|---|
+| indu | web |
+| dindu | Java |
+| chondu | web |
+| — | sql |
+| — | Python |
+| bindu | — |
+| nendu | — |
+
+### Practice Questions (with NULL filtering)
+
+```sql
+-- Q1: Find student name, subject name, considering the student
+--     even if they are not registered to any subject.
+SELECT s.name, sb.sname FROM student s LEFT JOIN subject sb ON s.subid = sb.subid;
+
+-- Q2: Find name, subject name, considering the subject
+--     even if no student is registered for it.
+SELECT s.name, sb.sname FROM student s RIGHT JOIN subject sb ON s.subid = sb.subid;
+
+-- Q3: Find student name when the student is NOT registered to any subject.
+SELECT s.name FROM student s LEFT JOIN subject sb ON s.subid = sb.subid
+WHERE s.subid IS NULL;
+
+-- Q4: Find subject name when NO student is registered to it.
+SELECT sb.sname FROM student s RIGHT JOIN subject sb ON s.subid = sb.subid
+WHERE s.subid IS NULL;
+```
+
+> 💡 **Pattern:** `LEFT/RIGHT JOIN + WHERE <joined-key> IS NULL` is the classic trick to find **unmatched / orphan records** (students with no subject, subjects with no students, etc).
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 10. Self Join – Family Tree Example
+
+A **Self Join** joins a table to itself — perfect for hierarchical / recursive relationships such as a family tree.
+
+**Family table**
+
+| Son | Father |
+|---|---|
+| Kalia | Raju |
+| Jaggu | dolu |
+| bheem | Chutki |
+| Chutki | Kalia |
+| Rahul | bheem |
+| dolu | abhi |
+
+### Q1: Find the Grandfather
+
+A grandfather is the **father of the father**. Self-join the table once, matching `son.father = father.son`.
+
+```sql
+SELECT s.son, gf.father AS grandfather
+FROM family s
+LEFT JOIN family gf ON s.father = gf.son;
+```
+
+| Grand-Son | Grandfather |
+|---|---|
+| Kalia | — |
+| Jaggu | abhi |
+| bheem | Kalia |
+| Chutki | Raju |
+| Rahul | Chutki |
+| dolu | — |
+
+*(LEFT JOIN is used so grandsons whose grandfather isn't in the table still appear, with NULL.)*
+
+### Q2: Find the Great-Grandfather
+
+A great-grandfather is the **father of the grandfather**. Self-join the table **twice**.
+
+```sql
+SELECT s.son, ggf.father AS great_grandfather
+FROM family s
+LEFT JOIN family gf  ON s.father  = gf.son
+LEFT JOIN family ggf ON gf.father = ggf.son;
+```
+
+| Grand-Son | Great-Grandfather |
+|---|---|
+| bheem | Raju |
+| Rahul | Kalia |
+
+> 💡 **Pattern:** each extra "generation" you need to trace back requires **one more self-join**. This is a very common interview question testing self-joins + multi-level relationships.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 11. SQL Operators
 
 An **Operator** is a symbol/keyword used to perform an operation on one or more operands.
 
@@ -631,9 +1156,11 @@ SELECT * FROM dept d WHERE EXISTS (SELECT * FROM emp e WHERE e.deptno=d.deptno);
 | Special | `IN NOT IN LIKE NOT LIKE BETWEEN NOT BETWEEN IS NULL IS NOT NULL` |
 | Subquery | `IN ANY ALL EXISTS NOT EXISTS` |
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
-## 7. Subqueries & ROWNUM
+## 12. Subqueries & ROWNUM
 
 ### Subquery
 A query written **inside another SQL query** — also called an Inner Query or Nested Query. The inner query executes first; its result feeds the outer query.
@@ -714,9 +1241,11 @@ SELECT * FROM emp WHERE rownum<=5;     -- first 5 employees
 SELECT * FROM emp WHERE rownum=2;      -- ❌ No rows selected
 ```
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
-## 8. WHERE, GROUP BY, HAVING & ORDER BY
+## 13. WHERE, GROUP BY, HAVING & ORDER BY
 
 ### SQL Query Execution Order
 ```text
@@ -783,9 +1312,286 @@ SELECT * FROM emp ORDER BY deptno ASC, sal DESC;   -- multi-column sort
 | `HAVING` | Filter grouped rows |
 | `ORDER BY` | Sort final output |
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
-## 9. SQL\*Plus Commands
+## 14. TCL – Transaction Control Language
+
+**TCL** is a type of SQL language used to **control the transactions** done on the database.
+
+TCL consists of: **`COMMIT`**, **`ROLLBACK`**, **`SAVEPOINT`**
+
+### 1) COMMIT
+`COMMIT` is a TCL command used to **save data changes permanently**.
+```sql
+COMMIT;
+```
+
+### 2) ROLLBACK
+`ROLLBACK` is a TCL command used to **undo transactions** back to the last `COMMIT` or a specific `SAVEPOINT` address.
+```sql
+ROLLBACK;                 -- undo everything since last COMMIT
+ROLLBACK TO savepointname; -- undo everything since that SAVEPOINT
+```
+
+### 3) SAVEPOINT
+`SAVEPOINT` is a **temporary memory address** used to mark a point in a transaction — you can `ROLLBACK` to that exact point later.
+```sql
+SAVEPOINT savepointname;
+```
+
+### Example 1 — Basic Commit & Rollback
+
+```sql
+CREATE TABLE stud (sid NUMBER PRIMARY KEY, name VARCHAR2(10));
+
+INSERT INTO stud VALUES (101, 'ramesh');
+INSERT INTO stud VALUES (102, 'ramya');
+COMMIT;
+-- Commit complete.
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | ramesh |
+| 102 | ramya |
+
+```sql
+INSERT INTO stud VALUES (103, 'mahesh');
+INSERT INTO stud VALUES (104, 'manisha');
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | ramesh |
+| 102 | ramya |
+| 103 | mahesh |
+| 104 | manisha |
+
+```sql
+ROLLBACK;
+-- Rollback complete.
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | ramesh |
+| 102 | ramya |
+
+> The two uncommitted inserts (103, 104) disappeared because `ROLLBACK` undid everything since the last `COMMIT`.
+
+### Example 2 — Multiple Savepoints
+
+```sql
+INSERT INTO stud VALUES (103, 'mahesh');
+SAVEPOINT s1;
+-- Savepoint created.
+
+INSERT INTO stud VALUES (104, 'manisha');
+SAVEPOINT s2;
+
+INSERT INTO stud VALUES (105, 'suresh');
+SAVEPOINT s3;
+
+INSERT INTO stud VALUES (106, 'sunitha');
+SAVEPOINT s4;
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | ramesh |
+| 102 | ramya |
+| 103 | mahesh |
+| 104 | manisha |
+| 105 | suresh |
+| 106 | sunitha |
+
+```sql
+-- Roll back everything after savepoint s3 (undoes s4's insert only)
+ROLLBACK TO s3;
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | ramesh |
+| 102 | ramya |
+| 103 | mahesh |
+| 104 | manisha |
+| 105 | suresh |
+
+```sql
+-- Roll back everything after savepoint s2 (undoes s3's insert too)
+ROLLBACK TO s2;
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 101 | ramesh |
+| 102 | ramya |
+| 103 | mahesh |
+| 104 | manisha |
+
+> 💡 `ROLLBACK TO <savepoint>` undoes everything done **after** that savepoint, but keeps everything done **up to and including** it.
+
+### TCL Command Summary
+
+| Command | Purpose |
+|---|---|
+| `COMMIT` | Permanently save all changes |
+| `ROLLBACK` | Undo changes since last COMMIT/SAVEPOINT |
+| `SAVEPOINT` | Mark a point to roll back to later |
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 15. DCL – Data Control Language
+
+**DCL** is a type of SQL language used to **control the flow of data** or **grant/manage permissions**.
+
+DCL has two commands: **`GRANT`** and **`REVOKE`**
+
+### 1) GRANT
+Used to **give permission** to a user.
+```sql
+GRANT sql-statement ON tabname TO username;
+```
+```sql
+GRANT SELECT ON emp TO hr;         -- read-only permission
+GRANT UPDATE ON emp TO hr;         -- update permission
+GRANT ALL ON emp TO hr;            -- all permissions
+```
+
+### 2) REVOKE
+Used to **take back** a permission that was granted.
+```sql
+REVOKE sql-statement ON tabname FROM username;
+```
+
+### Practical Walkthrough
+
+```sql
+-- Logged in as SCOTT
+SHOW USER;
+-- USER is "SCOTT"
+
+-- Grant SELECT permission on emp to hr
+GRANT SELECT ON emp TO hr;
+-- Grant succeeded.
+
+-- Connect as hr
+CONN hr/tiger
+-- Connected.
+
+-- hr can't query "emp" directly — must qualify with owner
+SELECT * FROM emp;
+```
+```text
+ORA-00942: table or view does not exist
+```
+```sql
+-- Must reference the owning schema
+SELECT * FROM scott.emp;
+-- 14 rows selected
+```
+```sql
+-- hr only has SELECT, not UPDATE — this fails
+UPDATE scott.emp SET ename = 'KING' WHERE empno = 7839;
+```
+```text
+-- No UPDATE permission granted yet
+```
+```sql
+-- Back on SCOTT's session, grant UPDATE too
+CONN scott/tiger
+GRANT ALL ON emp TO hr;
+-- Grant succeeded.
+
+-- Back on hr's session
+CONN hr/tiger
+UPDATE scott.emp SET ename = 'KING' WHERE empno = 7839;
+-- 1 row updated.
+
+SELECT * FROM scott.emp;
+-- 14 rows selected (with the update reflected)
+```
+
+### DCL Command Summary
+
+| Command | Purpose |
+|---|---|
+| `GRANT` | Give a permission to a user |
+| `REVOKE` | Take back a previously granted permission |
+
+> 💡 A granted user must reference another user's table using `schema.tablename` syntax (e.g. `scott.emp`) unless a synonym is created.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 16. Copying Tables (CTAS) & Creating New Users
+
+### CTAS — Create Table As Select
+
+**Copy of a table WITH records:**
+```sql
+CREATE TABLE tabn AS (SELECT stmt);
+```
+```sql
+CREATE TABLE empc AS (SELECT * FROM emp);
+```
+
+**Copy of a table WITHOUT records (structure only):**
+```sql
+CREATE TABLE tabn AS (SELECT * FROM tabn WHERE false-condition);
+```
+```sql
+CREATE TABLE empnorec AS (SELECT * FROM emp WHERE 1=2);
+```
+> The condition `1=2` is always **FALSE**, so **no records** are copied — only the table **structure** is created.
+
+### Creating a New User (3 Steps)
+
+**Step 1 — Connect to the SYSTEM account**
+```sql
+CONN system
+-- password: tiger
+```
+
+**Step 2 — Create the user**
+```sql
+CREATE USER username IDENTIFIED BY pwd;
+```
+```sql
+CREATE USER sourabh IDENTIFIED BY soura;
+```
+
+**Step 3 — Grant permissions**
+```sql
+GRANT CONNECT, RESOURCE TO username;
+```
+```sql
+GRANT CONNECT, RESOURCE TO sourabh;
+```
+
+| Step | Command |
+|---|---|
+| 1 | `CONN system` |
+| 2 | `CREATE USER username IDENTIFIED BY pwd;` |
+| 3 | `GRANT CONNECT, RESOURCE TO username;` |
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 17. SQL\*Plus Commands
 
 **Login example used in class:**
 - username: `hr`
@@ -804,6 +1610,8 @@ SELECT * FROM emp ORDER BY deptno ASC, sal DESC;   -- multi-column sort
 | 9 | `exit` | Exit SQL*Plus (shortcut: `Ctrl+Z`) |
 | 10 | `conn` | Connect as another user (enter username or username/password) |
 
+[⬆ Back to top](#-table-of-contents)
+
 ---
 
 ## 🔑 Interview Quick-Fire Points
@@ -818,3 +1626,86 @@ SELECT * FROM emp ORDER BY deptno ASC, sal DESC;   -- multi-column sort
 - `ROWNUM` is assigned **before** `ORDER BY` — always use an Inline View to sort-then-rank.
 - Query execution order: `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY`.
 - WHERE filters rows; HAVING filters groups.
+- `TRUNCATE` = no rollback, resets storage, keeps structure. `DROP` = removes table entirely (recoverable via FLASHBACK until purged). `DELETE` = DML, row-by-row, fully rollback-able.
+- A dropped table can be restored using `FLASHBACK TABLE ... TO BEFORE DROP` as long as it hasn't been `PURGE`d.
+- `ROLLBACK TO savepoint` keeps everything up to that savepoint but undoes everything after it.
+- `GRANT`/`REVOKE` require the target table to be accessed as `schema.tablename` by the grantee.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 💼 Most Asked Interview Questions
+
+**1. What is the difference between DELETE, TRUNCATE and DROP?**
+| | DELETE | TRUNCATE | DROP |
+|---|---|---|---|
+| Type | DML | DDL | DDL |
+| Removes | Selected rows (WHERE) | All rows | Entire table (structure + data) |
+| Rollback | Yes | No (auto-commits) | Recoverable via FLASHBACK until purged |
+| Speed | Slower (row by row, logged) | Faster | Fastest |
+
+**2. What is the difference between WHERE and HAVING?**
+`WHERE` filters rows **before** grouping and cannot use aggregate functions. `HAVING` filters **groups** after `GROUP BY` and is commonly used with aggregate functions.
+
+**3. What is the difference between UNION and UNION ALL?**
+`UNION` removes duplicate rows (does an implicit sort/dedup, slower); `UNION ALL` keeps all rows including duplicates (faster).
+
+**4. What is a Primary Key vs a Unique Key?**
+Both enforce uniqueness, but a Primary Key does **not allow NULL** and a table can have only **one**. A Unique Key **allows one NULL** (some DBs allow more) and a table can have **multiple** Unique Keys.
+
+**5. What is the difference between CHAR and VARCHAR2?**
+`CHAR` is fixed-length (pads with spaces, wastes memory); `VARCHAR2` is variable-length (uses only the required space, Oracle-recommended, up to 4000 bytes).
+
+**6. What is a Self Join? Give a real use case.**
+A join of a table with itself using aliases. Common use case: employee–manager hierarchy, or finding a grandfather/great-grandfather in a family tree (see [Section 10](#10-self-join--family-tree-example)).
+
+**7. Difference between Inner Join and Outer Join?**
+Inner Join returns only matched rows from both tables. Outer Join (Left/Right/Full) additionally returns unmatched rows with NULLs from one or both sides.
+
+**8. How do you find the 2nd highest / Nth highest salary?**
+Using an Inline View with `ROWNUM` (after sorting):
+```sql
+SELECT * FROM (
+    SELECT e.*, ROWNUM r FROM (SELECT * FROM emp ORDER BY sal DESC) e
+) WHERE r = 2;
+```
+
+**9. Why can't you use `WHERE ROWNUM = 2` directly?**
+Because `ROWNUM` is assigned **before** `ORDER BY` executes and row numbering starts fresh with each query, so a filter like `ROWNUM = 2` never matches (Oracle checks row 1 first, fails, and never gets to a "row 2"). You must first sort in an inline view, then apply `ROWNUM` in the outer query.
+
+**10. What is a Correlated Subquery? How is it different from a Nested Subquery?**
+A Correlated Subquery references a column from the **outer query** and executes **once per outer row**. A Nested Subquery is fully independent, executes **once**, and its result is used by the outer query.
+
+**11. What is the difference between HAVING and Subquery filtering?**
+`HAVING` filters **aggregated/grouped** results; a subquery in `WHERE` filters based on values computed from another query, before or independent of grouping.
+
+**12. What does `(+)` mean in Oracle old-style joins?**
+It marks the "deficient" side of an outer join — the side that should be padded with NULLs for unmatched rows. `a.col = b.col(+)` is a LEFT OUTER JOIN; `a.col(+) = b.col` is a RIGHT OUTER JOIN.
+
+**13. Can a dropped table be recovered? How?**
+Yes — as long as it hasn't been purged, using `FLASHBACK TABLE tabname TO BEFORE DROP;`. Once `PURGE`d (or purged automatically by policy), it cannot be recovered.
+
+**14. What is the difference between `IN` and `EXISTS`?**
+`IN` compares a value against a **list** returned by the subquery (works best with smaller result sets). `EXISTS` merely checks whether the subquery returns **any row at all** (often faster for large/correlated subqueries since it can short-circuit).
+
+**15. What is Normalization? Why do we need Joins because of it?**
+Normalization splits data into multiple related tables to avoid redundancy and maintain data integrity. Because related data now lives in separate tables, **Joins** are required to bring that data back together meaningfully.
+
+**16. What's the difference between `NVL` and `NVL2`?**
+`NVL(a, b)` → returns `b` if `a` is NULL, else returns `a`.
+`NVL2(a, b, c)` → returns `c` if `a` is NULL, else returns `b`.
+
+**17. What is a Savepoint used for, and how is it different from Commit?**
+`SAVEPOINT` marks an intermediate point within an ongoing transaction that you can roll back to, without discarding the entire transaction. `COMMIT` permanently ends the transaction and makes all changes permanent — you can no longer roll back past it.
+
+**18. What is the difference between a Single Row and Multi Row Subquery?**
+A Single Row Subquery returns exactly one value and uses operators like `=`, `>`, `<`. A Multi Row Subquery returns multiple values and must use `IN`, `ANY`, `ALL`, or `EXISTS`.
+
+**19. What happens if you `GRANT` a permission and the grantee queries the table directly without the schema prefix?**
+It throws `ORA-00942: table or view does not exist`, because the table belongs to another user's schema. The grantee must use `schema.tablename` (e.g. `scott.emp`) unless a synonym is created.
+
+**20. What is the purpose of `PURGE`, and what error do you get if you purge a table that was never dropped?**
+`PURGE` permanently removes a table from the recycle bin so it can no longer be flashed back. If the table was never dropped (i.e., not in the recycle bin), Oracle throws `ORA-38307: object not in RECYCLEBIN`.
+
+[⬆ Back to top](#-table-of-contents)
