@@ -1,0 +1,44 @@
+1. select distinct * from (select sal , dense_rank () over (order by sal asc) as dk from emp ) where dk= 4   ;
+
+2. select distinct * from (select sal , dense_rank () over (order by sal desc) as dk from emp ) where dk in(2 , 4 ,5)    ;
+
+3. select distinct * from (select sal , dense_rank () over (order by sal asc) as dk from emp ) where dk in(1 , 3 ,4)   ;
+
+4.  select * from emp where sal in (select distinct sal from (select sal , dense_rank () over (order by sal desc) as dk from emp ) where dk in(3 ,5))   ;
+
+5. select * from emp where sal in (select distinct sal from (select sal , dense_rank () over (order by sal asc) as dk from emp ) where dk in(2 ,5))   ;
+
+6. select distinct * from (select sal , dense_rank () over (order by sal desc) as dk from emp ) where dk < 4   ;
+
+7. select distinct * from (select sal , dense_rank () over (order by sal asc) as dk from emp ) where dk < 4   ;
+
+8. select * from emp where sal  in ( select distinct sal from (select sal , dense_rank () over (order by sal desc) as dk from emp ) where dk < 4 )  ;
+
+select * from (select EMP.* , dense_rank () over (order by sal desc) as dk from emp ) where dk < 4 ;
+
+9. select job , max(sal) from emp group by job ;
+
+10.select job , max(sal) from emp group by dept ;
+
+11. select * from (select sal , deptno , dense_rank() over ( partition by deptno  order by sal desc)  as dk from emp  ) where dk = 2   ;
+
+12  select * from (select sal , deptno , dense_rank() over ( partition by job  order by sal desc)  as dk from emp  ) where dk = 2   ;
+
+13. select count(*) , d.loc from emp e , dept d where e.deptno = d.deptno group by loc;
+
+14. select count(*) , d.loc from emp e , dept d where e.deptno = d.deptno group by loc order by count(*) desc ;
+
+15. select * from ( select  count(*) , d.loc , dense_rank() over (order by count(*) desc ) as dk  from emp e , dept d where e.deptno = d.deptno group by loc )  where dk = 1;
+
+16. select * from ( select  count(*) , d.loc , dense_rank() over (order by count(*) asc ) as dk  from emp e , dept d where e.deptno = d.deptno group by loc )  where dk = 1;
+
+17. select * from (select count(*) , m.empno, dense_rank() over (order by count(*) desc ) as df from emp e , emp m where e.mgr = m.empno  group by m.empno )  where dk = 1 ;
+
+18 . select * from (select count(*) , m.empno, dense_rank() over (order by count(*) desc ) as df from emp e , emp m where e.mgr = m.empno  group by m.empno  having count(*)  >= 3)  ;
+
+19.  select deptno from dept where loc in ( select loc from ( select  count(*) , d.loc , dense_rank() over (order by count(*)  desc ) as dk  from emp e , dept d where e.deptno = d.deptno group by loc )  ) ;
+
+20. select * from ( select count(*) , job , dense_rank() over (order by count(*) desc ) as dk from emp group by job ) where dk = 1 ; 
+
+21 select * from ( select count(*) , job , dense_rank() over (order by count(*) ) as dk from emp group by job ) where dk = 1 ;
+
