@@ -1,6 +1,6 @@
 # 📘 Oracle SQL & DBMS – Complete Notes
 
-A complete, structured reference covering DBMS basics, Data Types, Constraints, DDL, DML, DCL, TCL, Functions, Joins, Operators, Subqueries, and Query Clauses.
+A complete, structured reference covering DBMS basics, Data Types, Constraints, DDL, DML, DCL, TCL, Functions, Joins, Operators, Subqueries, Query Clauses, Views, Materialized Views, and Ranking Functions.
 
 ---
 
@@ -23,8 +23,11 @@ A complete, structured reference covering DBMS basics, Data Types, Constraints, 
 15. [DCL – Data Control Language](#15-dcl--data-control-language)
 16. [Copying Tables (CTAS) & Creating New Users](#16-copying-tables-ctas--creating-new-users)
 17. [SQL\*Plus Commands](#17-sqlplus-commands)
-18. [🔑 Interview Quick-Fire Points](#-interview-quick-fire-points)
-19. [💼 Most Asked Interview Questions](#-most-asked-interview-questions)
+18. [Views & Materialized Views](#18-views--materialized-views)
+19. [Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK](#19-ranking-functions--row_number-rank-dense_rank)
+20. [🎯 When to Use ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK](#-when-to-use-rownum-vs-row_number-vs-rank-vs-dense_rank)
+21. [🔑 Interview Quick-Fire Points](#-interview-quick-fire-points)
+22. [💼 Most Asked Interview Questions](#-most-asked-interview-questions)
 
 ---
 
@@ -1241,6 +1244,8 @@ SELECT * FROM emp WHERE rownum<=5;     -- first 5 employees
 SELECT * FROM emp WHERE rownum=2;      -- ❌ No rows selected
 ```
 
+> 📌 **See [Section 20](#-when-to-use-rownum-vs-row_number-vs-rank-vs-dense_rank)** for a full side-by-side on when to reach for `ROWNUM` vs the window ranking functions (`ROW_NUMBER`, `RANK`, `DENSE_RANK`).
+
 [⬆ Back to top](#-table-of-contents)
 
 ---
@@ -1614,6 +1619,594 @@ GRANT CONNECT, RESOURCE TO sourabh;
 
 ---
 
+## 18. Views & Materialized Views
+
+### What is a View
+A **View** is a **virtual table** built on top of a `SELECT` query. It has **no physical existence** of its own — it doesn't store any data.
+
+- It is a **logical structure** used to represent the result of one or more base tables (often used to abstract away complex joins).
+- Used for **abstraction**: hiding the internal complexity/implementation of a query, and exposing only the required functionality — the person querying the view doesn't need to know the internal joins/logic behind it.
+- Used to achieve **reusability** — write the complex query once as a view, then simply `SELECT * FROM view_name` afterwards instead of rewriting the whole join/query every time.
+- A view does **not require memory** to store data (it stores only the *query definition*, not the *result*).
+
+### Types of Views
+
+**1) Simple View** — built on a **single query with no joins/functions/subqueries** (usually from a single table).
+```sql
+CREATE VIEW empsel AS
+SELECT ename, sal FROM emp;
+```
+
+**2) Complex View** — built using a **complex query**, involving **joins, subqueries, or functions**.
+```sql
+CREATE VIEW emp_loc AS
+SELECT e.ename, d.loc FROM emp e, dept d WHERE e.deptno = d.deptno;
+```
+
+| Simple View | Complex View |
+|---|---|
+| Single table | Multiple tables |
+| No joins/functions/subqueries | Joins, subqueries, group functions allowed |
+| Usually updatable (INSERT/UPDATE/DELETE work through it) | Often NOT directly updatable |
+
+### View Syntax
+
+```sql
+CREATE VIEW v_name AS
+SELECT stmt;
+```
+
+```sql
+-- Simple view
+CREATE VIEW empsel AS
+SELECT ename, sal FROM emp;
+SELECT * FROM empsel;
+
+-- Complex view (join)
+CREATE VIEW emp_loc AS
+SELECT e.ename, d.loc FROM emp e, dept d WHERE e.deptno = d.deptno;
+SELECT * FROM emp_loc;
+```
+
+### Granting Permission to Create Views
+
+Creating a view requires special system-level permission — a regular user can't create views out of the box.
+```sql
+-- Connect as system (admin of db, all permissions)
+CONN system
+
+-- Grant the permission
+GRANT CREATE VIEW TO username;
+```
+```sql
+GRANT CREATE VIEW TO scott;
+```
+
+### What is a Materialized View
+
+A **Materialized View** (often shortened as **mview**) **does have a physical existence**.
+- It **is** a real database object.
+- It **requires memory**, because it actually **stores data** on disk.
+- It's a physical DB object that **precomputes and saves the result of a query into an actual table**.
+- It stores **both** the query definition **and** the actual data (a real snapshot of the result), unlike a normal view which stores only the query.
+
+### Materialized View Syntax & Example
+
+```sql
+CREATE MATERIALIZED VIEW v_name AS
+SELECT stmt;
+```
+
+**Granting permission (system-level, same idea as views):**
+```sql
+CONN system
+GRANT CREATE MATERIALIZED VIEW TO username;
+```
+```sql
+GRANT CREATE MATERIALIZED VIEW TO scott;
+```
+
+**Example:**
+```sql
+CREATE MATERIALIZED VIEW max_job AS
+SELECT MAX(sal) AS msal, job FROM emp
+GROUP BY job;
+
+SELECT * FROM max_job;
+```
+
+### View vs Materialized View
+
+| | **View** | **Materialized View** |
+|---|---|---|
+| Physical existence | ❌ No — virtual only | ✅ Yes — a real, physical DB object |
+| What it stores | Only the **query** | The query **AND** the actual **snapshot data** |
+| Data source on each run | Always pulled **live** from the base table | Pulled from the **stored snapshot**, not the base table (except the very first time) |
+| Speed | Slower — re-runs the underlying query every single time | Faster — data is already precomputed and sitting there |
+| Reflects base table changes? | ✅ **Instantly** — always shows current base table data | ❌ **Not automatically** — needs a manual/scheduled refresh |
+| Memory usage | Minimal (just stores the query text) | Higher (stores actual duplicate data) |
+
+**Why this trade-off exists:**
+
+*View:*
+```text
+exec view → goes to base table (1000 records) → filters down to 10 matched → returned
+```
+Every execution re-scans/re-joins the base table live. This means it's always accurate, but slower — especially for expensive joins/aggregations run repeatedly.
+
+*Materialized View:*
+```text
+First time:  mat view → base table (1000 records) → stored as 10 matched records in the mview's own storage (db object)
+Every time after: mat view → reads directly from its own stored 10 records (fast, but possibly stale)
+```
+Since it already has the filtered/aggregated result sitting in its own storage, it's much faster to read — but it won't automatically reflect new changes made to the base table.
+
+### Refreshing a Materialized View
+
+Because a materialized view's stored data does **not** automatically update when the base table changes, you must manually (or via a schedule) **refresh** it:
+```sql
+EXEC DBMS_MVIEW.REFRESH('mview_name');
+```
+Until you run this, the materialized view keeps showing **old/stale data**, even though the base table has already changed.
+
+### Practice Questions — Views & Mviews
+
+**Q1. Create a view to display employee name and manager name.**
+```sql
+CREATE VIEW manager_view AS
+(SELECT e.ename AS emp, m.ename AS manager
+ FROM emp e, emp m
+ WHERE e.mgr = m.empno);
+```
+*(This is a self-join wrapped inside a view — see [Section 10](#10-self-join--family-tree-example).)*
+
+**Q2. Create a materialized view to display employee name, salary, salary grade, and location.**
+```sql
+CREATE MATERIALIZED VIEW empsalloc AS
+(SELECT e.ename, e.sal, d.loc, s.grade
+ FROM emp e, dept d, salgrade s
+ WHERE e.deptno = d.deptno
+ AND e.sal BETWEEN s.losal AND s.hisal);
+```
+*(Combines a non-equi join on `SALGRADE` with a regular equi join on `DEPT`.)*
+
+**Q3. Create a view to display employee details of those earning the Top 3 highest salaries.**
+```sql
+CREATE VIEW top3_earners AS
+SELECT * FROM (
+    SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
+) WHERE dk < 4;
+```
+*(A great example of wrapping a `DENSE_RANK()` ranking query — see [Section 19](#19-ranking-functions--row_number-rank-dense_rank) — inside a reusable view.)*
+
+**Q4. Create a view to display the total salary present in each location.**
+```sql
+CREATE VIEW loc_total_sal AS
+SELECT d.loc, SUM(e.sal) AS total_sal
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+GROUP BY d.loc;
+```
+
+### ⚠️ Points to Keep in Mind — Views & Materialized Views
+
+- A **View** stores **no data at all** — it's just a saved `SELECT` statement. Every time you query it, Oracle re-runs that underlying query against the live base table(s).
+- A **Materialized View** stores **actual data** — it behaves like a real table with a snapshot of results, which is why it needs memory/storage and why it must be **refreshed** to stay current.
+- Creating either type requires an explicit `GRANT CREATE VIEW` / `GRANT CREATE MATERIALIZED VIEW` from an admin (typically via `system`) — a plain user account can't create them by default.
+- A **Simple View** built on a single table without joins/functions is generally **updatable** — `INSERT`/`UPDATE`/`DELETE` through the view can affect the base table.
+- A **Complex View** (joins, `GROUP BY`, aggregate functions, `DISTINCT`) is often **NOT directly updatable** — Oracle can't always figure out which base table row an update should apply to.
+- After creating a **materialized view**, changes to the base table are **silent** — no error, no warning — the mview just quietly keeps showing old data until you explicitly refresh it. This is the single most common gotcha.
+- Materialized views are ideal for **expensive, repeated aggregate queries** (e.g., dashboards, reports) where slightly-stale data is an acceptable trade-off for speed.
+- Regular views are ideal when you need **always up-to-date** data and the underlying query isn't too expensive to re-run each time.
+- Dropping a view: `DROP VIEW view_name;` — Dropping a materialized view: `DROP MATERIALIZED VIEW mview_name;` (these are **different DROP statements** — you can't drop an mview with the plain `DROP VIEW` syntax).
+
+### 💼 Tricky Interview Questions — Views & Mviews
+
+**Q1. If I insert a new row into the base table `emp`, does a normal View on `emp` show that new row immediately?**
+**Yes, instantly** — a view has no stored data of its own; every query against it re-reads the live base table, so any change to the base table is reflected the very next time the view is queried.
+
+**Q2. If I insert a new row into the base table, does a Materialized View built on that table show the new row immediately?**
+**No** — the materialized view keeps showing its **old snapshot** until someone explicitly runs `EXEC DBMS_MVIEW.REFRESH('mview_name');` (or an automatic refresh schedule kicks in, if one was configured). This is the single biggest source of "why is my report showing wrong numbers" bugs with materialized views.
+
+**Q3. If both a View and a Materialized View are built on the exact same complex join query, which one is faster to query repeatedly, and why?**
+The **Materialized View** is faster, because it already has the precomputed result physically stored — reading it is just a simple table scan of already-filtered data. The plain View has to **re-execute the entire join/aggregation** every single time it's queried, which gets expensive on large tables or complex joins.
+
+**Q4. If I try to run `INSERT INTO` a Complex View built with a `JOIN`, what typically happens?**
+It usually **fails** or is restricted — Oracle can't reliably determine which base table (and which specific row) the new data should go into when multiple tables are joined together. Simple views built on a single table are far more likely to support `INSERT`/`UPDATE`/`DELETE`.
+
+**Q5. If I `DROP TABLE` a base table that a view depends on, what happens to the view?**
+The view becomes **invalid** (it still exists as an object, but querying it throws an error) — since a view has no data of its own, it depends entirely on the base table existing. A materialized view, by contrast, still has its **last-refreshed data** physically stored, though it can no longer refresh further once its source table is gone.
+
+**Q6. If I want a "Top N" or ranked report (like Top 3 highest earners) to always be instantly accurate, should I use a View or a Materialized View?**
+A **View** — since ranking queries like `DENSE_RANK()` need to reflect the current state of the data (a new hire or a raise could change the ranking), a materialized view risks showing an outdated "Top 3" until refreshed. Use a materialized view only if slightly-stale rankings are acceptable in exchange for speed.
+
+**Q7. If I create a Materialized View and never call `DBMS_MVIEW.REFRESH`, does it ever update on its own?**
+Not unless it was created with an automatic refresh option (e.g., `ON COMMIT` or a refresh schedule/interval) — by default, without those options, it stays frozen at whatever data existed the moment it was created (or last manually refreshed).
+
+**Q8. Why can't I just always use Materialized Views everywhere instead of regular Views, since they're faster?**
+Because they trade **accuracy for speed** and cost **extra storage** — every materialized view duplicates real data on disk, and that data can silently go stale. For queries on small tables, or where up-to-the-second accuracy matters (e.g., checking current stock/inventory), a regular view (or the base table directly) is the safer choice.
+
+**Q9. What's the difference between `DROP VIEW` and `DROP MATERIALIZED VIEW`, and what happens if you use the wrong one?**
+They're **separate commands** for separate object types in Oracle's data dictionary — running `DROP VIEW` on a materialized view (or vice versa) fails with an error, because Oracle doesn't treat them as the same kind of object internally, even though they look similar conceptually.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 19. Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK
+
+### What is DENSE_RANK
+
+`DENSE_RANK()` is a **window function** (also called a **ranking function**) used to **assign a rank** to each row based on **ascending or descending order** of a given column.
+
+- It's called a "window" function because it operates on a **window/slice** of rows (defined by `PARTITION BY`) without collapsing them into a single row — unlike `GROUP BY`, every original row still comes back, just with an extra rank column attached.
+- Unlike normal aggregate functions (`SUM`, `AVG`, `COUNT`), **rows are not merged/grouped** — each row keeps its own identity, but gets a rank number.
+- **"Dense"** means there are **no gaps** in the ranking sequence — if two rows tie for rank 3, the next distinct value gets rank 4 (not rank 5).
+
+### Syntax
+
+```sql
+DENSE_RANK() OVER (
+    PARTITION BY col      -- optional: restart ranking within each group
+    ORDER BY col ASC/DESC -- required: defines what "rank 1" means
+)
+```
+The exact same syntax pattern applies to `ROW_NUMBER()` and `RANK()` — only the tie-handling behaviour differs.
+
+| Part | Meaning |
+|---|---|
+| `PARTITION BY col` | **Optional.** Works like `GROUP BY`, but doesn't collapse rows — it restarts the ranking counter for each group/partition. |
+| `ORDER BY col ASC/DESC` | **Required.** Defines the sort order used to assign ranks. `DESC` → highest value gets rank 1. `ASC` → lowest value gets rank 1. |
+
+> Without `PARTITION BY`, ranking runs across the **entire result set** as one single group.
+
+### Worked Example
+
+Given a table of salaries (with a duplicate value, to show how ties are handled):
+
+| sal |
+|---|
+| 700 |
+| 500 |
+| 400 |
+| 500 |
+| 800 |
+
+Query:
+```sql
+SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dr
+FROM emp;
+```
+
+Result (sorted by salary descending):
+
+| sal | dense_rank |
+|---|---|
+| 800 | 1 |
+| 700 | 2 |
+| 500 | 3 |
+| 500 | 3 |
+| 400 | 4 |
+
+👉 Both rows with `sal = 500` get rank **3** (a tie), and the very next distinct value (`400`) still gets rank **4**, not 5. That's the "dense" (no-gap) behaviour.
+
+**Using it to filter — find the row(s) with the 3rd highest salary:**
+```sql
+SELECT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk
+    FROM emp
+)
+WHERE dk = 3;
+```
+
+> ⚠️ You **cannot** filter directly with `WHERE dk = 3` in the same query where you compute `DENSE_RANK()` — window functions are evaluated **after** `WHERE`, so you must wrap it in an **inline view (subquery)** and filter in the outer query.
+
+### DENSE_RANK vs RANK vs ROW_NUMBER
+
+| Function | Behaviour on ties | Gaps after a tie? |
+|---|---|---|
+| `ROW_NUMBER()` | Gives every row a **unique** number, even ties get different numbers | — |
+| `RANK()` | Ties get the **same** rank | ✅ Yes — skips the next rank(s) (e.g. 1,2,2,4) |
+| `DENSE_RANK()` | Ties get the **same** rank | ❌ No gap — next value continues immediately (e.g. 1,2,2,3) |
+
+**Same data, side by side:**
+
+| sal | ROW_NUMBER | RANK | DENSE_RANK |
+|---|---|---|---|
+| 800 | 1 | 1 | 1 |
+| 700 | 2 | 2 | 2 |
+| 500 | 3 | 3 | 3 |
+| 500 | 4 | 3 | 3 |
+| 400 | 5 | 5 | 4 |
+
+> 💡 **Interview favorite:** "If I want the true Nth *distinct* value (e.g. 3rd highest **unique** salary, counting duplicates as one), use `DENSE_RANK`. If I want the Nth *row* regardless of duplicates, use `ROW_NUMBER`. If I want competition-style ranking (like Olympic medals, where two golds mean no silver), use `RANK`."
+
+### 🧠 How to Build These Queries Without Guessing
+
+This is the exact skill that fixes "I can't write it directly, I keep needing to test again and again." Don't try to write the whole nested query in one shot — build it in **layers**, testing each layer before adding the next.
+
+**Step 1 — Write and run the PLAIN query first.** Forget ranking for a second. Just get the raw data right.
+```sql
+SELECT sal FROM emp;
+```
+Run it. Does the data look right? Good, move on.
+
+**Step 2 — Add ORDER BY and eyeball the order.**
+```sql
+SELECT sal FROM emp ORDER BY sal DESC;
+```
+Run it. Confirm the sort direction is what you actually want (`DESC` for highest-first, `ASC` for lowest-first). This is the #1 source of "wrong Nth value" bugs.
+
+**Step 3 — Add the ranking function as an extra column, don't filter yet.**
+```sql
+SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk
+FROM emp;
+```
+Run it and **look at the `dk` column with your own eyes**. Confirm rank 1 is where you expect, confirm ties share a rank, confirm no gaps (or gaps, if using `RANK`). Don't skip this step — this is where 90% of bugs get caught early.
+
+**Step 4 — ONLY NOW wrap it as a subquery and filter.**
+```sql
+SELECT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk
+    FROM emp
+) WHERE dk = 3;
+```
+
+**Step 5 — If you need it PER GROUP, add PARTITION BY and re-test from Step 3.**
+```sql
+SELECT sal, deptno, DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) AS dk
+FROM emp;
+```
+Look at the output again — does the rank column **reset back to 1** every time `deptno` changes? If yes, you're ready to filter with `WHERE dk = 2` in an outer query.
+
+> **Golden Rule:** Never write the WHERE-filtered outer query and the ranking-function inner query at the same time. Always get the inner `SELECT ..., DENSE_RANK()/RANK()/ROW_NUMBER() OVER (...)` running and *visually verified* on its own first. Only wrap it once you trust it.
+
+### ⚠️ Points to Keep in Mind — Ranking Functions
+
+- `DENSE_RANK()`, `RANK()`, and `ROW_NUMBER()` (like all window functions) **cannot be used directly in a `WHERE` clause** — `WHERE` runs before window functions are calculated. You must compute the rank in a subquery/inline view and filter in the **outer** query.
+- They also **cannot be used in `GROUP BY` or `HAVING`** — same reason, they're evaluated after grouping/aggregation.
+- Always double check `ASC` vs `DESC` in `ORDER BY` — this single word decides whether rank 1 means "highest" or "lowest."
+- `PARTITION BY` **resets** the ranking counter for each group; without it, ranking runs across the whole table as one group.
+- If you want the **Nth highest/lowest distinct value**, use `DENSE_RANK` (duplicates count once). If you want the **Nth physical row**, use `ROW_NUMBER` (duplicates count separately, always unique). If you want competition-style ranking with intentional gaps after ties, use `RANK`.
+- `DENSE_RANK() = N` (and `RANK() = N`) can return **more than one row** if there's a tie at that rank — don't assume it always returns exactly one row. `ROW_NUMBER() = N` always returns exactly one row.
+- Combine with `DISTINCT` in the outer query if you only care about the ranked value itself and not duplicate rows tied at the same rank.
+- Window functions can be combined with aggregates (e.g. `COUNT(*)` + `DENSE_RANK()`) to rank **groups** — very common for "top N department by employee count" style questions.
+- Test the inner ranking query **standalone** before nesting it — see the [step-by-step method above](#-how-to-build-these-queries-without-guessing).
+- Unlike `ROWNUM`, ranking functions are calculated **after `ORDER BY` is logically applied within the `OVER()` clause** — so you don't need a pre-sorted inline view just to get correct ordering (though you still need an outer query to filter on the rank alias).
+
+### 📝 Practice Questions
+
+> All questions use the classic `emp`/`dept` schema. Try writing the inner ranking query yourself first, then check.
+
+**Q1. Find the 4th lowest salary.**
+```sql
+SELECT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
+) WHERE dk = 4;
+```
+
+**Q2. Find the 2nd, 4th, and 5th highest salary.**
+```sql
+SELECT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
+) WHERE dk IN (2,4,5);
+```
+
+**Q3. Find the 1st, 3rd, and 4th lowest salary.**
+```sql
+SELECT DISTINCT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
+) WHERE dk IN (1,3,4);
+```
+
+**Q4. Find employee details of those earning the 3rd or 5th highest salary.**
+```sql
+SELECT * FROM emp WHERE sal IN (
+    SELECT sal FROM (
+        SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
+    ) WHERE dk IN (3,5)
+);
+```
+
+**Q5. Find employee details of those earning the 2nd or 5th lowest salary.**
+```sql
+SELECT * FROM (
+    SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
+) WHERE dk IN (2,5);
+```
+
+**Q6. Find the Top 3 highest salaries.**
+```sql
+SELECT DISTINCT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
+) WHERE dk < 4;
+```
+
+**Q7. Find the Top 3 lowest salaries.**
+```sql
+SELECT DISTINCT * FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
+) WHERE dk < 4;
+```
+
+**Q8. Find employee details of those earning the Top 3 highest salaries.**
+```sql
+SELECT * FROM (
+    SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
+) WHERE dk < 4;
+```
+
+**Q9. Find the max salary in each job.**
+```sql
+SELECT job, MAX(sal) FROM emp GROUP BY job;
+```
+*(No ranking needed — plain `GROUP BY` + `MAX` is enough here.)*
+
+**Q10. Find the max salary in each department.**
+```sql
+SELECT deptno, MAX(sal) FROM emp GROUP BY deptno;
+```
+
+**Q11. Find the 2nd max salary in each department.**
+```sql
+SELECT * FROM (
+    SELECT emp.*, DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) AS dk FROM emp
+) WHERE dk = 2;
+```
+
+**Q12. Find the 2nd max salary in each job.**
+```sql
+SELECT * FROM (
+    SELECT emp.*, DENSE_RANK() OVER (PARTITION BY job ORDER BY sal DESC) AS dk FROM emp
+) WHERE dk = 2;
+```
+
+**Q13. Find the number of employees working in each location.**
+```sql
+SELECT d.loc, COUNT(*) FROM emp e, dept d WHERE e.deptno = d.deptno GROUP BY d.loc;
+```
+*(No ranking needed.)*
+
+**Q14. Find the department/location where the highest number of employees are working.**
+```sql
+SELECT * FROM (
+    SELECT d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
+    FROM emp e, dept d WHERE e.deptno = d.deptno
+    GROUP BY d.loc
+) WHERE dk = 1;
+```
+
+**Q15. Find the location where the highest number of employees are working (with department breakdown).**
+```sql
+SELECT * FROM (
+    SELECT d.deptno, d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
+    FROM emp e, dept d WHERE e.deptno = d.deptno
+    GROUP BY d.deptno, d.loc
+) WHERE dk = 1;
+```
+
+**Q16. Find the location where the least number of employees are working.**
+```sql
+SELECT * FROM (
+    SELECT d.deptno, d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) ASC) AS dk
+    FROM emp e, dept d WHERE e.deptno = d.deptno
+    GROUP BY d.deptno, d.loc
+) WHERE dk = 1;
+```
+
+**Q17. Find the manager who has the highest number of reporting employees.**
+```sql
+SELECT * FROM (
+    SELECT m.empno, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
+    FROM emp e, emp m WHERE e.mgr = m.empno
+    GROUP BY m.empno
+) WHERE dk = 1;
+```
+
+**Q18. Find the managers who have at least 3 employees reporting to them.**
+```sql
+SELECT e.mgr, COUNT(*) FROM emp e, emp m WHERE e.mgr = m.empno
+GROUP BY e.mgr HAVING COUNT(*) >= 3;
+```
+*(Just `GROUP BY` + `HAVING` — a ranking function isn't needed for an "at least N" style question, only for "top N" or "Nth" questions.)*
+
+**Q19. Find the Top 2 locations with the highest number of employees working.**
+```sql
+SELECT * FROM (
+    SELECT d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
+    FROM emp e, dept d WHERE e.deptno = d.deptno
+    GROUP BY d.loc
+) WHERE dk <= 2;
+```
+
+**Q20. Find the Top 2 designations (jobs) with the highest number of employees.**
+```sql
+SELECT * FROM (
+    SELECT job, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
+    FROM emp GROUP BY job
+) WHERE dk <= 2;
+```
+
+**Q21. Find the job with the least number of employees working.**
+```sql
+SELECT * FROM (
+    SELECT job, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) ASC) AS dk
+    FROM emp GROUP BY job
+) WHERE dk = 1;
+```
+
+### 💼 Interview Questions — Ranking Functions
+
+**Q1. If I write `SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp WHERE dk = 1;` directly, what happens?**
+It **fails** with an error, because `dk` doesn't exist yet at the point `WHERE` is evaluated — window functions execute **after** `WHERE`/`GROUP BY`/`HAVING`, so `dk` is only available at the `SELECT`/`ORDER BY` stage. You must wrap the ranking query in a subquery and filter in the **outer** `SELECT`.
+
+**Q2. If two employees are tied for the 2nd highest salary, and I filter `WHERE dk = 2`, how many rows come back?**
+**Both** of them — `DENSE_RANK` gives ties the same rank number, so any query filtering on that rank returns every row sharing it, not just one.
+
+**Q3. If I use `RANK()` instead of `DENSE_RANK()` for the same "3rd highest salary" question, could I get a different (wrong) answer?**
+Yes — if there's a tie for 2nd place, `RANK()` will **skip** rank 3 entirely (e.g., 1,2,2,4), so filtering `WHERE rnk = 3` returns **nothing**, even though there clearly is a "3rd highest distinct value" conceptually. `DENSE_RANK` avoids this by not leaving gaps.
+
+**Q4. If I forget `PARTITION BY` when I actually wanted "2nd highest salary per department," what happens?**
+The ranking runs across the **entire table** as a single group instead of restarting per department — you'll get the overall 2nd highest salary company-wide, and most departments will show **no rows at all** for `dk = 2`, since only one or two departments actually contain the company's 2nd-highest earner.
+
+**Q5. If I use `ORDER BY sal ASC` when I meant to find the highest salary, what's rank 1?**
+Rank 1 becomes the **lowest** salary, not the highest — a very common accidental-bug source. Always double-check `ASC`/`DESC` matches the actual question ("highest" → `DESC`, "lowest" → `ASC`).
+
+**Q6. Can I use `DENSE_RANK()` inside a `HAVING` clause directly?**
+No — same reason as `WHERE`: window functions are computed **after** grouping/aggregation/HAVING, so you cannot reference the rank column inside `HAVING` in the same query level. Wrap it in a subquery first.
+
+**Q7. If my table has only 2 distinct salary values but I ask for the "3rd highest salary," what does the query return?**
+**No rows** — there simply is no rank 3 to match, so the outer `WHERE dk = 3` filters everything out. This is expected behavior, not a bug.
+
+**Q8. What's the difference between using `DENSE_RANK` vs simply using `ROWNUM` with `ORDER BY` to get the "Nth highest" value?**
+`ROWNUM`-based approaches give you the Nth **row**, which breaks silently if there are duplicate values (you might get a duplicate value's row instead of the true Nth *distinct* value). `DENSE_RANK` correctly treats duplicate values as a single rank, giving you the true Nth-distinct answer, and can also *correctly* return multiple tied rows when appropriate.
+
+**Q9. If I combine `DENSE_RANK()` with `COUNT(*)` and `GROUP BY` in the same subquery, does it rank the raw rows or the grouped result?**
+It ranks the **grouped/aggregated result** — since `GROUP BY` runs before window functions are applied, `DENSE_RANK()` sees one row per group (e.g., one row per `deptno` with its `COUNT(*)`), and ranks those group-level rows.
+
+**Q10. Why must you test the inner `SELECT ..., DENSE_RANK() OVER (...)` query on its own before wrapping it in an outer filter?**
+Because if the ranking logic itself is wrong (wrong `ORDER BY` direction, missing `PARTITION BY`, wrong column), the outer query will still run **without any error** and just silently return the wrong rows — there's no error message to catch these logic mistakes, so you have to visually verify the rank column yourself before trusting it.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 🎯 When to Use ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK
+
+A common source of confusion is picking the right tool for "Nth row / Nth highest / Top N" style questions. Here's the decision guide:
+
+| Situation | Use | Why |
+|---|---|---|
+| Just want the "first N rows" of a query, don't care about ties/duplicates at all | **ROWNUM** | Simplest — a plain pseudo-column, no `OVER()` needed. `WHERE rownum<=5` |
+| Need the "Nth row" (e.g. exactly row 2), but must sort first | **ROWNUM** inside an inline view (sort in inner query, apply `ROWNUM` in outer) | `ROWNUM` is assigned **before** `ORDER BY`, so sorting has to happen in an inner query first |
+| Want a guaranteed **unique** number per row, even for exact duplicate values (e.g. paginate results, or need exactly one row per rank no matter what) | **ROW_NUMBER()** | Never ties — every row gets a distinct sequential number, even if two rows have identical values |
+| Want "Nth highest/lowest **distinct** value" and duplicates should count as ONE rank, with **no gaps** afterward (e.g. 3rd highest salary — counting a tie as one shared rank) | **DENSE_RANK()** | Ties share a rank; the next distinct value continues immediately (1,2,2,3 — not 1,2,2,4) |
+| Want **competition-style ("Olympic") ranking**, where a tie should visibly "use up" the next rank slot(s) (e.g. 2 people tied for gold means nobody gets silver, next is bronze/rank 3) | **RANK()** | Ties share a rank, but the following rank is **skipped** to reflect how many rows tied (1,2,2,4) |
+| Need to rank **within groups** (e.g. 2nd highest salary *per department*, top 2 products *per category*) | **DENSE_RANK() / RANK() / ROW_NUMBER() with `PARTITION BY`** | `PARTITION BY` restarts the ranking counter for every group — `ROWNUM` cannot do this natively |
+| Filtering directly in a `WHERE` clause without any inline view/subquery | **ROWNUM only** (with the `<=` / `<` / `=1` caveats) | `DENSE_RANK`/`RANK`/`ROW_NUMBER` are window functions — they are **never** usable directly in `WHERE`, always need an outer query |
+| Data may have duplicate values and you want the true "Nth distinct value" answer to be bug-proof against those duplicates | **DENSE_RANK()** | `ROWNUM`/`ROW_NUMBER` will happily return a duplicate value's row as if it were a distinct rank — `DENSE_RANK` is duplicate-safe |
+
+### Quick memory hooks
+- **ROWNUM** → "just give me row N, I don't care about values or ties." Oldest, simplest, but gets assigned *before* sorting.
+- **ROW_NUMBER()** → "give every row its own unique number, ties or not." Good for pagination.
+- **RANK()** → "Olympic medal style — ties eat up the next spot(s)."
+- **DENSE_RANK()** → "ties share a spot, but nothing after it gets skipped." Best default choice for "Nth highest/lowest distinct value" interview questions.
+
+### ⚠️ Conditions to Keep in Mind (combined — ROWNUM + Ranking Functions)
+
+- `ROWNUM` is a **pseudo-column** (not a real function); `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()` are **window/ranking functions** that require `OVER (...)`. They are not interchangeable syntactically.
+- `ROWNUM` is assigned **before `ORDER BY`** runs — always sort in an inner query first, then apply `ROWNUM` in the outer query, or the row numbers won't match the sort order you expect.
+- `WHERE rownum = 2` (or any number greater than 1) **never works directly** — Oracle evaluates row 1 first, fails the condition, and never proceeds to "assign" row 2. Always use `<=` / `<` for ROWNUM range filters, or wrap in an inline view with an alias if you need an exact row.
+- None of `ROWNUM`, `ROW_NUMBER()`, `RANK()`, or `DENSE_RANK()` can be filtered directly in the **same-level** `WHERE`, `GROUP BY`, or `HAVING` clause where they're computed — always wrap in a subquery/inline view and filter in the outer query.
+- `PARTITION BY` only applies to the three window ranking functions, **not** to `ROWNUM` — if you need per-group numbering, you must use `ROW_NUMBER()`/`RANK()`/`DENSE_RANK()`.
+- `DENSE_RANK() = N` and `RANK() = N` can return **multiple rows** if there's a tie at that rank; `ROW_NUMBER() = N` and `ROWNUM = N` always return **at most one row**.
+- Always double-check `ASC` vs `DESC` in the `ORDER BY` used for ranking — it decides whether "rank 1" means highest or lowest.
+- Test the inner ranking/ROWNUM query **standalone first**, visually confirm the numbers look right, and only then wrap it in an outer filter — a wrong `ORDER BY` or missing `PARTITION BY` produces no error, just silently wrong results.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
 ## 🔑 Interview Quick-Fire Points
 
 - `SEQUEL` was SQL's original name; introduced by Raymond Boyce & Donald Chamberlin.
@@ -1630,6 +2223,8 @@ GRANT CONNECT, RESOURCE TO sourabh;
 - A dropped table can be restored using `FLASHBACK TABLE ... TO BEFORE DROP` as long as it hasn't been `PURGE`d.
 - `ROLLBACK TO savepoint` keeps everything up to that savepoint but undoes everything after it.
 - `GRANT`/`REVOKE` require the target table to be accessed as `schema.tablename` by the grantee.
+- A **View** stores only a query (no data, always live); a **Materialized View** stores actual data (a physical snapshot) and needs manual/scheduled refresh to stay current.
+- `DENSE_RANK` = no gaps after ties; `RANK` = gaps after ties (Olympic-style); `ROW_NUMBER` = always unique, no ties possible.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1664,7 +2259,7 @@ A join of a table with itself using aliases. Common use case: employee–manager
 Inner Join returns only matched rows from both tables. Outer Join (Left/Right/Full) additionally returns unmatched rows with NULLs from one or both sides.
 
 **8. How do you find the 2nd highest / Nth highest salary?**
-Using an Inline View with `ROWNUM` (after sorting):
+Using an Inline View with `ROWNUM` (after sorting), or with `DENSE_RANK()` (see [Section 19](#19-ranking-functions--row_number-rank-dense_rank)):
 ```sql
 SELECT * FROM (
     SELECT e.*, ROWNUM r FROM (SELECT * FROM emp ORDER BY sal DESC) e
@@ -1707,5 +2302,14 @@ It throws `ORA-00942: table or view does not exist`, because the table belongs t
 
 **20. What is the purpose of `PURGE`, and what error do you get if you purge a table that was never dropped?**
 `PURGE` permanently removes a table from the recycle bin so it can no longer be flashed back. If the table was never dropped (i.e., not in the recycle bin), Oracle throws `ORA-38307: object not in RECYCLEBIN`.
+
+**21. What is the difference between a View and a Materialized View?**
+A View stores only the query definition and always pulls live data from the base table on every read. A Materialized View physically stores the query's result (a snapshot), making reads faster but requiring a manual/scheduled refresh (`EXEC DBMS_MVIEW.REFRESH`) to reflect base-table changes.
+
+**22. What is the difference between `RANK()` and `DENSE_RANK()`?**
+Both give tied rows the same rank, but `RANK()` **skips** the next rank number(s) after a tie (1,2,2,4), while `DENSE_RANK()` leaves **no gap** (1,2,2,3). `ROW_NUMBER()` never ties at all — every row gets a unique sequential number regardless of duplicate values.
+
+**23. Why can't `DENSE_RANK()`/`RANK()`/`ROW_NUMBER()` be used directly in a `WHERE` clause?**
+Because window/ranking functions are evaluated **after** `WHERE`, `GROUP BY`, and `HAVING` — at the point `WHERE` runs, the rank column doesn't exist yet. You must compute the rank in an inline view/subquery, then filter on it in the **outer** query.
 
 [⬆ Back to top](#-table-of-contents)
