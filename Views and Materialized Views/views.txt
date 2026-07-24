@@ -1,0 +1,9 @@
+1.  create view manager as select e.ename as empname  , m.ename  as mgrname from emp e , emp m where e.mgr = m.empno ;
+
+2.  create materialized view emp_sal_loc as (select e.ename , e.sal , d.loc , s.grade from emp e , dept d , salgrade s where e.deptno = d.deptno and e.sal between s.losal and s.hisal)  ;
+
+3.  create view  top_3_sal as  (select * from (select emp.* , dense_rank () over (order by sal desc)as dk  from emp )where dk > 4 );
+
+4.  create view sum_dept as ( select sum (sal) as sal , deptno from emp group by deptno )  ;
+
+5. create view managersandmanager as  ( select e.ename as emp_name , m.ename as manager_name , mm.ename as manager_manager_name from emp e , emp m , emp mm where e.mgr =m.empno and m.mgr =mm.empno );
