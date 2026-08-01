@@ -1,0 +1,543 @@
+select dname from dept where deptno = (select deptno from  (select deptno  , dense_rank() over(order by sum(sal)desc) dk from emp ) where dk = 1 );
+
+
+insert into student values(1 , 'sourabh' , 10) ;
+insert into student values(2 , 'sumit' , 11) ;
+insert into student values(3 , 'sawan' , 9) ;
+
+insert into marks values (1 , 2 , 'maths', 81) ;
+insert into marks values (2 , 2 , 'bio', 29) ;
+insert into marks values (3 , 2 , 'chem', 77) ;
+insert into marks values (4 , 2 , 'phy', 25) ;
+
+insert into marks values (5 , 3 , 'maths', 45) ;
+insert into marks values (6 , 3 , 'bio', 37) ;
+insert into marks values (7 , 3 , 'chem', 60) ;
+insert into marks values (8 , 3 , 'phy', 25) ;
+
+insert into marks values (9 , 1 , 'maths', 85) ;
+insert into marks values (10 , 1 , 'bio', null ) ;
+insert into marks values (11, 1 , 'chem', 37) ;
+insert into marks values (12 , 1 , 'phy', 25) ;
+
+1. select s.name , m.subject , m.score from student s , marks m where s.id =m.s_id ;
+2. select * from student s , marks m  where s.id = m.s_id(+) ;
+3. select sum(score) , s_id from marks group by s_id ;
+4. select s_id , sum(score) from marks group by s_id having sum(score) > 250 ;
+5. select S_id from marks group by s_id having sum(score) > (select avg(score) from marks) ;
+6. select subject , avg(score) from marks group by subject having avg(score) < 60 ;
+7.select s_id from marks where score >  (select max(score) from marks where subject = 'maths' ) ;
+8. select s.id from student s , marks m where s.id = m.s_id and m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )  ;
+9. select count(subject) from marks group by s_id ;
+10. select s.name , max(score) from student s , marks m where s.id = m.s_id group by s.name ;
+
+
+facing problem when one data depends on the other data and data is in other table 
+
+
+
+SQL> select * from students ;
+
+        ID NAME                      MARKS G
+---------- -------------------- ---------- -
+         1 sourabh                      40
+         2 sawan                        80
+         3 sumit                        75
+         5 ayush                        85
+         6 ram                          74
+         7 nayan                        25
+
+6 rows selected.
+
+SQL> select * from student ;
+
+        ID NAME                          SUB_ID
+---------- ------------------------- ----------
+         1 indu                               3
+         2 bindu
+         3 sindu                              1
+         4 chandu                             3
+         5 nandu
+
+SQL> select * from makrs ;
+select * from makrs
+              *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> select * from marks ;
+select * from marks
+              *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> select * from mark ;
+select * from mark
+              *
+ERROR at line 1:
+ORA-00942: table or view does not exist
+
+
+SQL> drop table student ;
+
+Table dropped.
+
+SQL> create table student (id number primary key , name varchar(25) , class number ) ;
+
+Table created.
+
+SQL> create table marks (id number primary key , s_id number , subject varchar(20) , score number , foreign key s_id references student(id) ) ;
+create table marks (id number primary key , s_id number , subject varchar(20) , score number , foreign key s_id references student(id) )
+                                                                                                           *
+ERROR at line 1:
+ORA-00906: missing left parenthesis
+
+
+SQL> create table marks (id number primary key , s_id number , subject varchar(20) , score number , foreign key (s_id) references student(id) ) ;
+
+Table created.
+
+SQL>
+SQL> insert into student values(1 , 'sourabh' , 10) ;
+
+1 row created.
+
+SQL> insert into student values(2 , 'sumit' , 11) ;
+
+1 row created.
+
+SQL> insert into student values(3 , 'sawan' , 9) ;
+
+1 row created.
+
+SQL>
+SQL> insert into marks values (1 , 2 , 'maths', 81) ;
+
+1 row created.
+
+SQL> insert into marks values (2 , 2 , 'bio', 29) ;
+
+1 row created.
+
+SQL> insert into marks values (3 , 2 , 'chem', 77) ;
+
+1 row created.
+
+SQL> insert into marks values (4 , 2 , 'phy', 25) ;
+
+1 row created.
+
+SQL>
+SQL> insert into marks values (5 , 3 , 'maths', 45) ;
+
+1 row created.
+
+SQL> insert into marks values (6 , 3 , 'bio', 37) ;
+
+1 row created.
+
+SQL> insert into marks values (7 , 3 , 'chem', 60) ;
+
+1 row created.
+
+SQL> insert into marks values (8 , 3 , 'phy', 25) ;
+
+1 row created.
+
+SQL>
+SQL> insert into marks values (9 , 1 , 'maths', 85) ;
+
+1 row created.
+
+SQL> insert into marks values (10 , 1 , 'bio', null ) ;
+
+1 row created.
+
+SQL> insert into marks values (11, 1 , 'chem', 37) ;
+
+1 row created.
+
+SQL> insert into marks values (12 , 1 , 'phy', 25) ;
+
+1 row created.
+
+SQL>
+SQL> select * from student ;
+
+        ID NAME                           CLASS
+---------- ------------------------- ----------
+         1 sourabh                           10
+         2 sumit                             11
+         3 sawan                              9
+
+SQL> select * from marks ;
+
+        ID       S_ID SUBJECT                   SCORE
+---------- ---------- -------------------- ----------
+         1          2 maths                        81
+         2          2 bio                          29
+         3          2 chem                         77
+         4          2 phy                          25
+         5          3 maths                        45
+         6          3 bio                          37
+         7          3 chem                         60
+         8          3 phy                          25
+         9          1 maths                        85
+        10          1 bio
+        11          1 chem                         37
+
+        ID       S_ID SUBJECT                   SCORE
+---------- ---------- -------------------- ----------
+        12          1 phy                          25
+
+12 rows selected.
+
+SQL> set lines1000 pages1000 ;
+SQL> select student_id from marks group by student_id having sum(marks) > (select avg(marks) from marks) ;
+select student_id from marks group by student_id having sum(marks) > (select avg(marks) from marks)
+                                                            *
+ERROR at line 1:
+ORA-00904: "MARKS": invalid identifier
+
+
+SQL>
+SQL> select student_id from marks group by student_id having sum(score) > (select avg(score) from marks) ;
+select student_id from marks group by student_id having sum(score) > (select avg(score) from marks)
+                                      *
+ERROR at line 1:
+ORA-00904: "STUDENT_ID": invalid identifier
+
+
+SQL> select id from marks group by id having sum(score) > (select avg(score) from marks) ;
+
+        ID
+----------
+         1
+         3
+         7
+         9
+
+SQL> select sum(marks) from student group by id f;
+select sum(marks) from student group by id f
+                                           *
+ERROR at line 1:
+ORA-00933: SQL command not properly ended
+
+
+SQL> select sum(marks) from student group by id ;
+select sum(marks) from student group by id
+           *
+ERROR at line 1:
+ORA-00904: "MARKS": invalid identifier
+
+
+SQL> select sum(score) from marks group by id ;
+
+SUM(SCORE)
+----------
+        81
+        37
+        37
+        29
+        25
+        45
+        25
+        77
+        60
+        85
+
+        25
+
+12 rows selected.
+
+SQL> select sum(score) , s_id from marks group by s_id ;
+
+SUM(SCORE)       S_ID
+---------- ----------
+       147          1
+       212          2
+       167          3
+
+SQL> seelct avg(score) from marks group by s_id ;
+SP2-0734: unknown command beginning "seelct avg..." - rest of line ignored.
+SQL> select avg(score) from marks group by s_id ;
+
+AVG(SCORE)
+----------
+        49
+        53
+     41.75
+
+SQL> select S_id from marks group by id having sum(score) > (select avg(score) from marks) ;
+select S_id from marks group by id having sum(score) > (select avg(score) from marks)
+       *
+ERROR at line 1:
+ORA-00979: not a GROUP BY expression
+
+
+SQL> select S_id from marks group by s_id having sum(score) > (select avg(score) from marks) ;
+
+      S_ID
+----------
+         1
+         2
+         3
+
+SQL> select avg(score) from marks ;
+
+AVG(SCORE)
+----------
+47.8181818
+
+SQL> select s_id , sum(marks) from marks group by s_id having sum(marks) > 250 ;
+select s_id , sum(marks) from marks group by s_id having sum(marks) > 250
+                                                             *
+ERROR at line 1:
+ORA-00904: "MARKS": invalid identifier
+
+
+SQL> select s_id , sum(score) from marks group by s_id having sum(score) > 250 ;
+
+no rows selected
+
+SQL> select subject , avg(score) from marks group by subject having avg(score) < 60 ;
+
+SUBJECT              AVG(SCORE)
+-------------------- ----------
+phy                          25
+chem                         58
+bio                          33
+
+SQL>
+SQL> select s_id from marks where marks >  (select max(score) from marks ) ;
+select s_id from marks where marks >  (select max(score) from marks )
+                             *
+ERROR at line 1:
+ORA-00904: "MARKS": invalid identifier
+
+
+SQL>
+SQL> select s_id from marks where score >  (select max(score) from marks ) ;
+
+no rows selected
+
+SQL> select count(subject) from marks group by s_id ;
+
+COUNT(SUBJECT)
+--------------
+             4
+             4
+             4
+
+SQL> select s.name , m.score from student s , marks m where s.id = m.s_id ;
+
+NAME                           SCORE
+------------------------- ----------
+sumit                             81
+sumit                             29
+sumit                             77
+sumit                             25
+sawan                             45
+sawan                             37
+sawan                             60
+sawan                             25
+sourabh                           85
+sourabh
+sourabh                           37
+sourabh                           25
+
+12 rows selected.
+
+SQL> select s.name , max(score) from student s , marks m where s.id = m.s_id group by s.name ;
+
+NAME                      MAX(SCORE)
+------------------------- ----------
+sawan                             60
+sourabh                           85
+sumit                             81
+
+SQL> select s.id , s.score from student s , marks m where s.id = m.s_id group by m.s_id having sum(marks)
+  2
+SQL> ;
+  1* select s.id , s.score from student s , marks m where s.id = m.s_id group by m.s_id having sum(marks)
+SQL> ;;
+SP2-0042: unknown command ";" - rest of line ignored.
+SQL> select s.id , s.score from student s , marks m where s.id = m.s_id group by m.s_id having sum(marks) ;
+select s.id , s.score from student s , marks m where s.id = m.s_id group by m.s_id having sum(marks)
+                                                                                                    *
+ERROR at line 1:
+ORA-00920: invalid relational operator
+
+
+SQL> select s.id , s.score from student s , marks m where s.id = m.s_id group by m.s_id having sum(score) ;
+select s.id , s.score from student s , marks m where s.id = m.s_id group by m.s_id having sum(score)
+                                                                                                    *
+ERROR at line 1:
+ORA-00920: invalid relational operator
+
+
+SQL> select s.id , s.score from student s , marks m where s.id = m.s_id group by s.class having avg(score) < (select score from student ) ;
+select s.id , s.score from student s , marks m where s.id = m.s_id group by s.class having avg(score) < (select score from student )
+              *
+ERROR at line 1:
+ORA-00904: "S"."SCORE": invalid identifier
+
+
+SQL> select s.id , m.score from student s , marks m where s.id = m.s_id group by s.class having avg(score) < (select score from student ) ;
+select s.id , m.score from student s , marks m where s.id = m.s_id group by s.class having avg(score) < (select score from student )
+                                                                                                                *
+ERROR at line 1:
+ORA-00979: not a GROUP BY expression
+
+
+SQL>
+SQL> select s.id , m.score from student s , marks m where s.id = m.s_id group by s.class having avg(score) < (select max( score) from student where s.id = id  ) ;
+select s.id , m.score from student s , marks m where s.id = m.s_id group by s.class having avg(score) < (select max( score) from student where s.id = id  )
+                                                                                                                                               *
+ERROR at line 1:
+ORA-00979: not a GROUP BY expression
+
+
+SQL> select s.id from student s , marks m where s.id = m.s_id ;
+
+        ID
+----------
+         2
+         2
+         2
+         2
+         3
+         3
+         3
+         3
+         1
+         1
+         1
+         1
+
+12 rows selected.
+
+SQL> select s.id from student s , marks m where s.id = m.s_id where m.marks > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )  ;
+select s.id from student s , marks m where s.id = m.s_id where m.marks > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )
+                                                         *
+ERROR at line 1:
+ORA-00933: SQL command not properly ended
+
+
+SQL> select s.id from student s , marks m where s.id = m.s_id where m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )  ;
+select s.id from student s , marks m where s.id = m.s_id where m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )
+                                                         *
+ERROR at line 1:
+ORA-00933: SQL command not properly ended
+
+
+SQL> select s.id from student s , marks m where s.id = m.s_id and m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )  ;
+
+        ID
+----------
+         2
+         2
+         3
+         1
+
+SQL> select s.id , marks from student s , marks m where s.id = m.s_id and m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )  ;
+select s.id , marks from student s , marks m where s.id = m.s_id and m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )
+              *
+ERROR at line 1:
+ORA-00904: "MARKS": invalid identifier
+
+
+SQL> select s.id , m.score from student s , marks m where s.id = m.s_id and m.score > (select avg(score) from marks mm where s.id = m.s_id group by s.class  )  ;
+
+        ID      SCORE
+---------- ----------
+         2         81
+         2         77
+         3         60
+         1         85
+
+SQL> select avg(score) from marks m , student s where s.id = m.s_id group by s.class ;
+
+AVG(SCORE)
+----------
+        53
+     41.75
+        49
+
+SQL> select * from student s , marks m  where s.id = m.s_id(+) ;
+
+        ID NAME                           CLASS         ID       S_ID SUBJECT                   SCORE
+---------- ------------------------- ---------- ---------- ---------- -------------------- ----------
+         2 sumit                             11          1          2 maths                        81
+         2 sumit                             11          2          2 bio                          29
+         2 sumit                             11          3          2 chem                         77
+         2 sumit                             11          4          2 phy                          25
+         3 sawan                              9          5          3 maths                        45
+         3 sawan                              9          6          3 bio                          37
+         3 sawan                              9          7          3 chem                         60
+         3 sawan                              9          8          3 phy                          25
+         1 sourabh                           10          9          1 maths                        85
+         1 sourabh                           10         10          1 bio
+         1 sourabh                           10         11          1 chem                         37
+         1 sourabh                           10         12          1 phy                          25
+
+12 rows selected.
+
+SQL>
+SQL> select sum(score) , s_id from marks group by s_id ;
+
+SUM(SCORE)       S_ID
+---------- ----------
+       147          1
+       212          2
+       167          3
+
+SQL> select s_id , sum(score) from marks group by s_id having sum(score) > 250 ;
+
+no rows selected
+
+SQL> select S_id from marks group by s_id having sum(score) > (select avg(score) from marks) ;
+
+      S_ID
+----------
+         1
+         2
+         3
+
+SQL>
+SQL> select subject , avg(score) from marks group by subject having avg(score) < 60 ;
+
+SUBJECT              AVG(SCORE)
+-------------------- ----------
+phy                          25
+chem                         58
+bio                          33
+
+SQL>
+SQL>  select s_id from marks where score >  (select max(score) from marks ) ;
+
+no rows selected
+
+SQL>  select s_id from marks where score >  (select max(score) from marks where subject = 'maths' ) ;
+
+no rows selected
+
+SQL>  select s_id from marks where score >  (select max(score) from marks where subject = 'maths' ) ;
+
+no rows selected
+
+SQL> select s.name , max(score) from student s , marks m where s.id = m.s_id group by s.name ; 
+
+NAME                      MAX(SCORE)
+------------------------- ----------
+sawan                             60
+sourabh                           85
+sumit                             81
+
+SQL> commit ;
+
+Commit complete.
+
+SQL> select s.name , max(score) from student s , marks m where s.id = m.s_id group by s.name ;
