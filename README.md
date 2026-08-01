@@ -1,6 +1,6 @@
-# 📘 Oracle SQL & DBMS – Complete Notes
+# 📘 Oracle SQL & DBMS – Complete Interview-Ready Notes
 
-A complete, structured reference covering DBMS basics, Data Types, Constraints, DDL, DML, DCL, TCL, Functions, Joins, Operators, Subqueries, Query Clauses, Views, Materialized Views, and Ranking Functions.
+A complete, structured, interview-preparation-ready reference covering DBMS basics, Data Types, Constraints, DDL, DML, DCL, TCL, Functions, Joins, Operators, CASE Expressions, Subqueries, Sequences, Views, Ranking Functions, Triggers, Indexing, Normalization — plus a "when to use what" decision guide.
 
 ---
 
@@ -17,17 +17,23 @@ A complete, structured reference covering DBMS basics, Data Types, Constraints, 
 9. [Outer Joins – Practical Walkthrough](#9-outer-joins--practical-walkthrough)
 10. [Self Join – Family Tree Example](#10-self-join--family-tree-example)
 11. [SQL Operators](#11-sql-operators)
-12. [Subqueries & ROWNUM](#12-subqueries--rownum)
-13. [WHERE, GROUP BY, HAVING & ORDER BY](#13-where-group-by-having--order-by)
-14. [TCL – Transaction Control Language](#14-tcl--transaction-control-language)
-15. [DCL – Data Control Language](#15-dcl--data-control-language)
-16. [Copying Tables (CTAS) & Creating New Users](#16-copying-tables-ctas--creating-new-users)
-17. [SQL\*Plus Commands](#17-sqlplus-commands)
-18. [Views & Materialized Views](#18-views--materialized-views)
-19. [Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK](#19-ranking-functions--row_number-rank-dense_rank)
-20. [🎯 When to Use ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK](#-when-to-use-rownum-vs-row_number-vs-rank-vs-dense_rank)
-21. [🔑 Interview Quick-Fire Points](#-interview-quick-fire-points)
-22. [💼 Most Asked Interview Questions](#-most-asked-interview-questions)
+12. [CASE Expression](#12-case-expression)
+13. [Subqueries, Correlated Subqueries & ROWNUM](#13-subqueries-correlated-subqueries--rownum)
+14. [WHERE, GROUP BY, HAVING & ORDER BY](#14-where-group-by-having--order-by)
+15. [TCL – Transaction Control Language](#15-tcl--transaction-control-language)
+16. [DCL – Data Control Language](#16-dcl--data-control-language)
+17. [Copying Tables (CTAS) & Creating New Users](#17-copying-tables-ctas--creating-new-users)
+18. [SQL\*Plus Commands](#18-sqlplus-commands)
+19. [Views & Materialized Views](#19-views--materialized-views)
+20. [Sequences](#20-sequences)
+21. [Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK](#21-ranking-functions--row_number-rank-dense_rank)
+22. [Triggers](#22-triggers)
+23. [Indexing](#23-indexing)
+24. [Normalization](#24-normalization)
+25. [🎯 ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK](#25--rownum-vs-row_number-vs-rank-vs-dense_rank)
+26. [🧭 Decision Guide — When to Use What](#26--decision-guide--when-to-use-what)
+27. [🔑 Interview Quick-Fire Points](#27--interview-quick-fire-points)
+28. [💼 Most Asked Interview Questions](#28--most-asked-interview-questions)
 
 ---
 
@@ -116,7 +122,7 @@ Stores data in the form of **JSON** or **XML**.
 - Datatypes / Operators
 - DDL, DML, DCL, DQL, TCL
 - Functions, `GROUP BY`, `WHERE`, `ORDER BY`, `HAVING`, `JOIN`, Subquery
-- Normalization
+- Normalization, Indexing, Triggers, Sequences, Views
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -326,6 +332,7 @@ CREATE TABLE employee (
 - A table can have multiple UNIQUE constraints, but only **one** PRIMARY KEY.
 - A table *can* exist without a Primary Key, though it's not recommended.
 - FOREIGN KEY creates a **child–parent** relationship between two tables.
+- 🔗 A **PRIMARY KEY is automatically indexed** by Oracle — see [Section 23 – Indexing](#23-indexing).
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1100,20 +1107,98 @@ SELECT ename||' works as '||job FROM emp;
 ```
 
 ### 5) Set Operators
-Combine results of two or more `SELECT` statements. Both queries need the **same number of columns, same datatypes, same order**.
 
-| Operator | Purpose |
-|---|---|
-| `UNION` | Unique rows from both queries |
-| `UNION ALL` | All rows, including duplicates |
-| `INTERSECT` | Only common rows |
-| `MINUS` | Rows in query 1 not present in query 2 |
+Set operators are a type of operator used to **combine/merge the results of at least two different queries**.
 
+```
+Types: 1) UNION   2) UNION ALL   3) INTERSECT   4) MINUS
+```
+
+Both queries must have the **same number of columns, same datatypes, and same order of columns**.
+
+**Sample sets used below:**
+```text
+A = {1, 3, 4}        B = {2, 5, 3}
+```
+
+**1) `UNION`** — returns **all** values from Set 1 and Set 2, with **no duplicates**, and the resulting data is returned in **sorted order**.
 ```sql
 SELECT deptno FROM emp
 UNION
 SELECT deptno FROM dept;
 ```
+```text
+A UNION B = {1, 2, 3, 4, 5}
+```
+
+**2) `UNION ALL`** — returns **all** values from Set 1 **with** Set 2, **including duplicates**.
+```sql
+SELECT deptno FROM emp
+UNION ALL
+SELECT deptno FROM dept;
+```
+```text
+A UNION ALL B = {1, 3, 4, 2, 5, 3}
+```
+
+**3) `INTERSECT`** — returns only the **common values** present in **both** Set 1 and Set 2.
+```sql
+SELECT deptno FROM emp
+INTERSECT
+SELECT deptno FROM dept;
+```
+```text
+A INTERSECT B = {3}
+```
+
+**4) `MINUS`** — returns values from Set 1 which are **not present** in Set 2. (Order matters! `A MINUS B` ≠ `B MINUS A`.)
+```sql
+SELECT deptno FROM dept
+MINUS
+SELECT deptno FROM emp;
+```
+```text
+A MINUS B = {1, 4}
+B MINUS A = {2, 5}
+```
+
+### Practice Questions — Set Operators
+
+Using sample `Emp` and `Student` tables where both have a `name`/`ename` column:
+
+```sql
+-- Q1. Display all ENAME with STUDENT NAME (combined, no duplicates)
+SELECT ename FROM emp
+UNION
+SELECT name FROM student;
+
+-- Q2. Display all STUDENT NAME with ENAME
+SELECT name FROM student
+UNION
+SELECT ename FROM emp;
+
+-- Q3. Display ENAME which is NOT present in STUDENT
+SELECT ename FROM emp
+MINUS
+SELECT name FROM student;
+
+-- Q4. Display STUDENT NAME which is NOT present in ENAME
+SELECT name FROM student
+MINUS
+SELECT ename FROM emp;
+
+-- Q5. Find common names present in both ENAME & STUDENT NAME
+SELECT ename FROM emp
+INTERSECT
+SELECT name FROM student;
+
+-- Q6. Find ENAME and STUDENT NAME with no duplicates (sorted order)
+SELECT ename FROM emp
+UNION
+SELECT name FROM student;
+```
+
+> 💡 **Interview tip:** `UNION` does an implicit sort + de-duplication pass internally, so it's **slower** than `UNION ALL` on large datasets. If you know there are no duplicates (or don't care about them), always prefer `UNION ALL` for performance.
 
 ### 6) Special Operators
 
@@ -1134,6 +1219,8 @@ SELECT deptno FROM dept;
 
 ### 7) Subquery Operators
 
+**Subquery Operators** are special keywords that allow the **outer query** to connect with the result of an **inner query** — used for complex retrieval and filtering.
+
 | Operator | Meaning |
 |---|---|
 | `IN` | Matches any value returned by subquery |
@@ -1142,10 +1229,45 @@ SELECT deptno FROM dept;
 | `EXISTS` | TRUE if subquery returns **at least one row** |
 | `NOT EXISTS` | TRUE if subquery returns **no rows** |
 
+#### `ANY` — `(= any, > any, < any)`
+Used **with comparison operators**. The condition is **TRUE if the comparison is true for at least one** value returned by the inner query.
+
 ```sql
-SELECT * FROM emp WHERE sal > ANY (SELECT sal FROM emp WHERE deptno=30);
-SELECT * FROM dept d WHERE EXISTS (SELECT * FROM emp e WHERE e.deptno=d.deptno);
+SELECT ename, sal FROM emp
+WHERE sal > ANY (SELECT sal FROM emp WHERE ename IN ('Smith', 'Turner'));
 ```
+
+#### `ALL` — `(= all, > all, < all)`
+Used **with comparison operators**. The condition is **TRUE only if the comparison is true for ALL the values** returned by the inner query.
+
+```sql
+SELECT ename, sal FROM emp
+WHERE sal > ALL (SELECT sal FROM emp WHERE deptno = 30);
+```
+
+> 🧠 **Memory trick:** `ANY` = "at least one match is enough" (easier to satisfy). `ALL` = "every single value must satisfy it" (harder to satisfy, more restrictive).
+
+#### `EXISTS` / `NOT EXISTS`
+Used to **check the existence of rows** in a subquery's result set.
+- If the subquery returns **one or more rows** → `EXISTS` is TRUE.
+- If it returns **no rows** → `EXISTS` is FALSE (and `NOT EXISTS` becomes TRUE).
+
+```sql
+SELECT * FROM tab1
+WHERE EXISTS (
+    SELECT col FROM tab2 WHERE t1.col = t2.col
+);
+```
+
+```sql
+SELECT * FROM emp e
+WHERE EXISTS (
+    SELECT deptno FROM dept d
+    WHERE e.deptno = d.deptno AND loc = 'DALLAS'
+);
+```
+
+> 💡 `EXISTS` is generally **more efficient than `IN`**, because it **stops processing as soon as it finds a single matching row** — it doesn't need to build/compare against the entire result set the way `IN` does. `EXISTS` is mostly used for **Correlated Subqueries** (see [Section 13](#13-subqueries-correlated-subqueries--rownum)).
 
 ### Operator Summary
 
@@ -1163,7 +1285,79 @@ SELECT * FROM dept d WHERE EXISTS (SELECT * FROM emp e WHERE e.deptno=d.deptno);
 
 ---
 
-## 12. Subqueries & ROWNUM
+## 12. CASE Expression
+
+`CASE` is a SQL expression used to perform **conditional logic** directly inside a `SELECT` statement — similar to `if-else-if` in a programming language.
+
+### Syntax
+
+```sql
+CASE
+    WHEN cond1 THEN val1
+    WHEN cond2 THEN val2
+    ...
+    ELSE valn
+END
+```
+- Conditions are checked **top to bottom**, and the **first match wins** (just like an `else-if` ladder).
+- `ELSE` is optional — if omitted and no condition matches, the result is `NULL`.
+
+### Example
+
+```sql
+SELECT ename, sal,
+CASE
+    WHEN sal >= 2000 THEN 'HIGH'
+    WHEN sal > 0 AND sal < 2000 THEN 'LOW'
+END AS status
+FROM emp;
+```
+
+| ename | sal | status |
+|---|---|---|
+| SMITH | 800 | LOW |
+| ALLEN | 1600 | LOW |
+| JONES | 2975 | HIGH |
+| KING | 5000 | HIGH |
+
+### More Practice Examples
+
+```sql
+-- Categorize employees by salary band
+SELECT ename, sal,
+CASE
+    WHEN sal >= 3000 THEN 'Top Earner'
+    WHEN sal >= 1500 THEN 'Mid Earner'
+    ELSE 'Entry Level'
+END AS salary_band
+FROM emp;
+```
+
+```sql
+-- Grade employees based on department
+SELECT ename, deptno,
+CASE deptno
+    WHEN 10 THEN 'Accounting'
+    WHEN 20 THEN 'Research'
+    WHEN 30 THEN 'Sales'
+    ELSE 'Unknown'
+END AS dept_name
+FROM emp;
+```
+> 📝 Note: `CASE deptno WHEN 10 THEN ...` (the "simple CASE" form) only checks for **equality** — for range conditions (`>=`, `BETWEEN`, etc.), use the **searched CASE** form shown in the first example (`CASE WHEN cond THEN ...`).
+
+### ⚠️ Points to Keep in Mind — CASE Expression
+
+- `CASE` can be used inside `SELECT`, `WHERE`, `ORDER BY`, and even `GROUP BY`.
+- Conditions are evaluated **top to bottom** — order your conditions from most-specific to least-specific, just like an `else-if` ladder.
+- Without an `ELSE`, unmatched rows return `NULL` — always add an `ELSE` if you want a fallback value instead of NULL.
+- `CASE` is a great **alternative to DECODE()** (Oracle's older, less flexible equivalent) since it supports full comparison operators, not just equality.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 13. Subqueries, Correlated Subqueries & ROWNUM
 
 ### Subquery
 A query written **inside another SQL query** — also called an Inner Query or Nested Query. The inner query executes first; its result feeds the outer query.
@@ -1217,12 +1411,82 @@ SELECT * FROM (
 ```
 
 **5) Correlated Subquery** — depends on the outer query; executed **once per row** of the outer query.
+
+> **Definition:** Writing the outer query's column *inside* the inner query is what makes it a **correlated subquery**.
+> - The inner query **depends on** the outer query.
+> - The inner query references a **table or column from the outer (parent) query**.
+
 ```sql
 -- Employees earning more than their department average
 SELECT * FROM emp e WHERE sal > (SELECT AVG(sal) FROM emp WHERE deptno=e.deptno);
 
 -- Highest paid employee in each department
 SELECT * FROM emp e WHERE sal = (SELECT MAX(sal) FROM emp WHERE deptno=e.deptno);
+```
+
+#### Correlated Subquery — Worked Examples
+
+**Example 1: Find employee details below the minimum salary of their department.**
+```sql
+SELECT * FROM emp e
+WHERE sal < (SELECT MIN(sal) FROM emp e1 WHERE e.job = e1.job);
+```
+*(Here we need to reference the outer query's job for this to work correctly.)*
+
+**Example 2: Find employee details where salary is greater than the department average.**
+```sql
+SELECT * FROM emp e
+WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.deptno = e1.deptno);
+```
+
+**Example 3: Find employee details where salary > average salary of the same job.**
+```sql
+SELECT * FROM emp e
+WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.job = e1.job);
+```
+
+**Example 4: Find employee details when salary < max salary of the same department.**
+```sql
+SELECT * FROM emp e
+WHERE e.sal < (SELECT MAX(sal) FROM emp e1 WHERE e.deptno = e1.deptno);
+```
+
+**Example 5: Find employee details when salary > average salary of the same job (variant using aliasing consistently).**
+```sql
+SELECT * FROM emp e
+WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.job = e1.job);
+```
+
+#### `EXISTS` with Correlated Subqueries
+
+```sql
+SELECT * FROM emp e
+WHERE EXISTS (
+    SELECT deptno FROM dept d
+    WHERE e.deptno = d.deptno AND d.loc = 'DALLAS'
+);
+```
+This checks, **row by row**, whether the current employee's department is located in Dallas — a textbook correlated subquery paired with `EXISTS`.
+
+### 🔗 Combining DENSE_RANK with Correlated-style Nth Value Questions
+
+These questions look like correlated subqueries but are more cleanly solved with `DENSE_RANK()` (see [Section 21](#21-ranking-functions--row_number-rank-dense_rank)):
+
+```sql
+-- Q3. Find the 4th highest salary
+SELECT sal FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) dk FROM emp
+) WHERE dk = 4;
+
+-- Q4. Find the 4th lowest salary
+SELECT sal FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) dk FROM emp
+) WHERE dk = 4;
+
+-- Q5. Find the 2nd, 4th, and 5th highest salary
+SELECT sal FROM (
+    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) dk FROM emp
+) WHERE dk IN (2,4,5);
 ```
 
 ### ROWNUM
@@ -1244,13 +1508,21 @@ SELECT * FROM emp WHERE rownum<=5;     -- first 5 employees
 SELECT * FROM emp WHERE rownum=2;      -- ❌ No rows selected
 ```
 
-> 📌 **See [Section 20](#-when-to-use-rownum-vs-row_number-vs-rank-vs-dense_rank)** for a full side-by-side on when to reach for `ROWNUM` vs the window ranking functions (`ROW_NUMBER`, `RANK`, `DENSE_RANK`).
+### ⚠️ Points to Keep in Mind — Correlated Subqueries
+
+- A subquery becomes **correlated** the moment it references a **column from the outer query** inside the inner query's `WHERE`.
+- A correlated subquery runs **once per row** of the outer query — this can be **slow on large tables**, since it's essentially a loop.
+- Non-correlated (regular) subqueries run **once total**, independent of the outer query.
+- `EXISTS`/`NOT EXISTS` are the most natural fit for correlated subqueries — they only need to know "does at least one row exist," so they can stop early.
+- Always double-check which alias belongs to the outer query vs the inner query — this is the #1 source of correlated subquery bugs (accidentally comparing a table to itself with no real correlation).
+
+> 📌 **See [Section 26](#26--decision-guide--when-to-use-what)** for a full decision guide on when to reach for a Correlated Subquery vs a JOIN vs a Window Function.
 
 [⬆ Back to top](#-table-of-contents)
 
 ---
 
-## 13. WHERE, GROUP BY, HAVING & ORDER BY
+## 14. WHERE, GROUP BY, HAVING & ORDER BY
 
 ### SQL Query Execution Order
 ```text
@@ -1321,7 +1593,7 @@ SELECT * FROM emp ORDER BY deptno ASC, sal DESC;   -- multi-column sort
 
 ---
 
-## 14. TCL – Transaction Control Language
+## 15. TCL – Transaction Control Language
 
 **TCL** is a type of SQL language used to **control the transactions** done on the database.
 
@@ -1457,7 +1729,7 @@ SELECT * FROM stud;
 
 ---
 
-## 15. DCL – Data Control Language
+## 16. DCL – Data Control Language
 
 **DCL** is a type of SQL language used to **control the flow of data** or **grant/manage permissions**.
 
@@ -1541,7 +1813,7 @@ SELECT * FROM scott.emp;
 
 ---
 
-## 16. Copying Tables (CTAS) & Creating New Users
+## 17. Copying Tables (CTAS) & Creating New Users
 
 ### CTAS — Create Table As Select
 
@@ -1596,7 +1868,7 @@ GRANT CONNECT, RESOURCE TO sourabh;
 
 ---
 
-## 17. SQL\*Plus Commands
+## 18. SQL\*Plus Commands
 
 **Login example used in class:**
 - username: `hr`
@@ -1619,7 +1891,7 @@ GRANT CONNECT, RESOURCE TO sourabh;
 
 ---
 
-## 18. Views & Materialized Views
+## 19. Views & Materialized Views
 
 ### What is a View
 A **View** is a **virtual table** built on top of a `SELECT` query. It has **no physical existence** of its own — it doesn't store any data.
@@ -1777,7 +2049,7 @@ SELECT * FROM (
     SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
 ) WHERE dk < 4;
 ```
-*(A great example of wrapping a `DENSE_RANK()` ranking query — see [Section 19](#19-ranking-functions--row_number-rank-dense_rank) — inside a reusable view.)*
+*(A great example of wrapping a `DENSE_RANK()` ranking query — see [Section 21](#21-ranking-functions--row_number-rank-dense_rank) — inside a reusable view.)*
 
 **Q4. Create a view to display the total salary present in each location.**
 ```sql
@@ -1787,6 +2059,18 @@ FROM emp e, dept d
 WHERE e.deptno = d.deptno
 GROUP BY d.loc;
 ```
+
+**Q5. Create a materialized view to display manager name, manager's manager name.**
+```sql
+CREATE MATERIALIZED VIEW managers_manager AS
+(SELECT e.ename AS emp_name,
+        m.ename AS manager_name,
+        mm.ename AS manager_manager_name
+ FROM emp e, emp m, emp mm
+ WHERE e.mgr = m.empno
+ AND m.mgr = mm.empno);
+```
+*(A materialized view built on a 2-level self join — combines [Section 10](#10-self-join--family-tree-example) with mview concepts.)*
 
 ### ⚠️ Points to Keep in Mind — Views & Materialized Views
 
@@ -1833,7 +2117,118 @@ They're **separate commands** for separate object types in Oracle's data diction
 
 ---
 
-## 19. Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK
+## 20. Sequences
+
+### What is a Sequence
+A **Sequence** is a **database object** used to **generate a sequence of numbers** — most commonly used to auto-generate primary key values.
+
+### Key Rules & Defaults
+
+- By default, a sequence is in the state of **`NOCYCLE`** (it does **not** restart once it hits its max value — it simply stops/errors out).
+- Whenever you **do** want a sequence to cycle, you must **explicitly specify a `CACHE` value**.
+- By default, `START WITH` and `INCREMENT BY` are both **`1`**.
+- `CYCLE` makes the sequence **restart** back at its `START` value once it reaches its `MAXVALUE`.
+- The `CACHE` value **must be less than `MAXVALUE`** and **greater than `0`**.
+- **Always use `MINVALUE` in descending order sequences** — i.e. `(10 → -1)`, `(20 → -10)`, etc. (when generating descending sequences, `MINVALUE` matters more than you'd expect).
+- When you use `MINVALUE`, it **must not exceed `MAXVALUE`**.
+
+### Full Syntax
+
+```sql
+CREATE SEQUENCE s-name
+  START WITH val        -- optional, default 1
+  INCREMENT BY val       -- optional, default 1
+  MAXVALUE val
+  MINVALUE val
+  CYCLE / NOCYCLE         -- optional, default NOCYCLE
+  CACHE val;
+```
+
+### Basic Example
+
+```sql
+CREATE SEQUENCE seq1
+START WITH 1
+INCREMENT BY 1
+MAXVALUE 10;
+```
+
+### Using a Sequence
+
+| Command | Purpose |
+|---|---|
+| `seqname.NEXTVAL` | Generates & returns the **next** value in the sequence |
+| `seqname.CURRVAL` | Returns the **current** (last generated) value |
+
+```sql
+SELECT seq1.NEXTVAL FROM dual;
+```
+
+**Using a sequence to auto-generate a primary key while inserting:**
+```sql
+CREATE TABLE stud (sid NUMBER PRIMARY KEY, name VARCHAR2(10));
+-- Table created.
+
+CREATE SEQUENCE seq1 START WITH 1 INCREMENT BY 1 MAXVALUE 10;
+-- Sequence created.
+
+INSERT INTO stud VALUES (seq1.NEXTVAL, 'Ron');
+INSERT INTO stud VALUES (seq1.NEXTVAL, 'Smith');
+
+SELECT * FROM stud;
+```
+| sid | name |
+|---|---|
+| 1 | Ron |
+| 2 | Smith |
+
+### Practice Questions — Sequences
+
+**Q1. Create a sequence to generate numbers from 1 to 5.**
+```sql
+CREATE SEQUENCE seq1 START WITH 1 INCREMENT BY 1 MAXVALUE 5;
+```
+
+**Q2. Create a sequence to generate numbers from 10 down to 1 (descending).**
+```sql
+CREATE SEQUENCE seq2 START WITH 10 INCREMENT BY -1 MAXVALUE 10 MINVALUE 1;
+```
+
+**Q3. Create a sequence to generate even numbers from 1 to 10.**
+```sql
+CREATE SEQUENCE seq3 START WITH 2 INCREMENT BY 2 MAXVALUE 10;
+```
+
+**Q4. Create a sequence to generate odd numbers from 1 to 10.**
+```sql
+CREATE SEQUENCE seq4 START WITH 1 INCREMENT BY 2 MAXVALUE 10;
+```
+
+**Q5. Generate numbers from 11 to 20.**
+```sql
+CREATE SEQUENCE seq5 START WITH 10 INCREMENT BY 1 MAXVALUE 20;
+```
+*(Starting at 10 with an increment of 1 means the first `NEXTVAL` call returns 11.)*
+
+**Q6. Generate numbers from 1 to 5 and make it cycle.**
+```sql
+CREATE SEQUENCE seq6 START WITH 1 INCREMENT BY 1 MAXVALUE 5 CYCLE CACHE 2;
+```
+*(A `CACHE` value must be specified when using `CYCLE`.)*
+
+### ⚠️ Points to Keep in Mind — Sequences
+
+- A sequence is **independent of any table** — it just generates numbers; you have to explicitly plug `.NEXTVAL` into an `INSERT` to use it as a primary key generator.
+- `.CURRVAL` can only be used **after** at least one `.NEXTVAL` has been called in the **same session** — calling `CURRVAL` before any `NEXTVAL` throws an error.
+- Without `CYCLE`, once a sequence hits its `MAXVALUE`, the **next `NEXTVAL` call throws an error** (`ORA-08004`) instead of quietly stopping.
+- Sequence values can have **gaps** — if a transaction using `NEXTVAL` is rolled back, that generated number is **still "used up"** and won't be reissued. This is a common interview gotcha: sequences are **not gap-free**.
+- Dropping a sequence: `DROP SEQUENCE seqname;`
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 21. Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK
 
 ### What is DENSE_RANK
 
@@ -2171,7 +2566,263 @@ Because if the ranking logic itself is wrong (wrong `ORDER BY` direction, missin
 
 ---
 
-## 🎯 When to Use ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK
+## 22. Triggers
+
+### What is a Trigger
+
+A **Trigger** is a **stored PL/SQL block** that gets executed **automatically** in response to a specific event happening on a table — such as `INSERT`, `UPDATE`, or `DELETE`. Unlike a procedure, you **never call a trigger manually** — the database fires it for you.
+
+### Why Use Triggers
+- To automatically **enforce complex business rules** that constraints alone can't handle.
+- To **audit** changes — automatically log who changed what and when.
+- To **maintain derived/calculated data** automatically (e.g., keeping a running total in sync).
+- To **prevent invalid operations** (e.g., blocking DML during non-business hours).
+
+### Types of Triggers
+
+**Based on Timing:**
+| Type | Fires |
+|---|---|
+| `BEFORE` | Before the triggering DML statement executes |
+| `AFTER` | After the triggering DML statement executes |
+
+**Based on Level:**
+| Type | Fires |
+|---|---|
+| **Row-level** (`FOR EACH ROW`) | Once **per row** affected by the DML |
+| **Statement-level** | **Once** per triggering statement, regardless of how many rows are affected |
+
+### Basic Syntax
+
+```sql
+CREATE OR REPLACE TRIGGER trigger_name
+BEFORE/AFTER INSERT/UPDATE/DELETE ON table_name
+[FOR EACH ROW]
+BEGIN
+    -- PL/SQL logic
+END;
+```
+
+### Example 1 — Audit Trail (AFTER INSERT)
+
+```sql
+CREATE TABLE emp_audit (
+    empno NUMBER,
+    action VARCHAR2(10),
+    action_date DATE
+);
+
+CREATE OR REPLACE TRIGGER trg_emp_audit
+AFTER INSERT ON emp
+FOR EACH ROW
+BEGIN
+    INSERT INTO emp_audit VALUES (:NEW.empno, 'INSERT', SYSDATE);
+END;
+```
+> `:NEW` refers to the **new row's values** (used in `INSERT`/`UPDATE`). `:OLD` refers to the **old row's values** (used in `UPDATE`/`DELETE`). `:NEW` is **not available** in a `DELETE` trigger (nothing "new" exists), and `:OLD` is **not available** in an `INSERT` trigger (nothing "old" existed before).
+
+### Example 2 — Prevent Salary Decrease (BEFORE UPDATE)
+
+```sql
+CREATE OR REPLACE TRIGGER trg_prevent_sal_decrease
+BEFORE UPDATE OF sal ON emp
+FOR EACH ROW
+BEGIN
+    IF :NEW.sal < :OLD.sal THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Salary cannot be decreased');
+    END IF;
+END;
+```
+
+### Example 3 — Auto-populate a column (BEFORE INSERT)
+
+```sql
+CREATE OR REPLACE TRIGGER trg_auto_hiredate
+BEFORE INSERT ON emp
+FOR EACH ROW
+BEGIN
+    IF :NEW.hiredate IS NULL THEN
+        :NEW.hiredate := SYSDATE;
+    END IF;
+END;
+```
+
+### ⚠️ Points to Keep in Mind — Triggers
+
+- Triggers execute **automatically** — they cannot be called directly like a function or procedure.
+- Overusing triggers can make debugging **very hard**, since DML on a table can silently cause a cascade of hidden side effects that aren't visible in the query itself.
+- A **row-level trigger** (`FOR EACH ROW`) can access `:NEW` and `:OLD`; a **statement-level trigger** cannot.
+- Triggers **can call other triggers**, creating a chain — watch out for **infinite trigger loops** (e.g., a trigger on `UPDATE` of a table that itself updates the same table, re-firing itself).
+- A trigger that raises an error (via `RAISE_APPLICATION_ERROR`) will **roll back** the triggering DML statement.
+- To disable/enable a trigger without dropping it: `ALTER TRIGGER trigger_name DISABLE;` / `ENABLE;`
+- To delete a trigger permanently: `DROP TRIGGER trigger_name;`
+
+### 💼 Interview Questions — Triggers
+
+**Q1. What's the difference between a Trigger and a Stored Procedure?**
+A **Procedure** is called **explicitly** by the user/application. A **Trigger** fires **automatically** in response to a DML event — you never call it directly.
+
+**Q2. Can a trigger call itself indirectly and cause an infinite loop?**
+Yes — if Trigger A's logic causes a DML operation on the same table it's defined on (or on a table with a trigger that eventually loops back), it can cause a **mutating table error** or an infinite firing loop. This is a classic Oracle trigger gotcha (`ORA-04091: table is mutating`).
+
+**Q3. What's the difference between `:NEW` and `:OLD`?**
+`:NEW` holds the **new/incoming** values (available in `INSERT`/`UPDATE` triggers). `:OLD` holds the **existing/previous** values (available in `UPDATE`/`DELETE` triggers). Neither is available in the opposite scenario (`:OLD` doesn't exist for a fresh `INSERT`; `:NEW` doesn't exist for a `DELETE`).
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 23. Indexing
+
+### What is an Index
+
+An **Index** is a **database object** used to **speed up data retrieval** on a table, at the cost of some extra storage and slightly slower writes. Conceptually, it works like the index at the back of a book — instead of scanning every page, you jump straight to what you need.
+
+### Why Use Indexes
+- Dramatically speeds up `SELECT` queries with a `WHERE` clause, `JOIN` conditions, and `ORDER BY` on the indexed column(s).
+- Without an index, Oracle must perform a **Full Table Scan** — reading every single row to check if it matches.
+
+### Types of Indexes
+
+| Type | Description |
+|---|---|
+| **Unique Index** | Automatically created on `PRIMARY KEY` and `UNIQUE` constraint columns — ensures uniqueness |
+| **Non-Unique Index** | Manually created by the developer on frequently-searched columns; duplicates allowed |
+| **Composite Index** | An index built on **more than one column** together |
+| **Function-Based Index** | An index built on the **result of a function/expression**, not a raw column value |
+
+### Syntax
+
+```sql
+CREATE INDEX index_name ON table_name(column_name);
+```
+
+```sql
+-- Basic index on a frequently searched column
+CREATE INDEX idx_emp_ename ON emp(ename);
+
+-- Composite index (multiple columns)
+CREATE INDEX idx_emp_dept_job ON emp(deptno, job);
+
+-- Function-based index
+CREATE INDEX idx_emp_upper_ename ON emp(UPPER(ename));
+```
+
+> 💡 **Automatic indexing:** Oracle **automatically** creates a unique index whenever you define a `PRIMARY KEY` or `UNIQUE` constraint — you don't need to manually create one for those columns.
+
+### When an Index Helps vs Doesn't Help
+
+✅ **Helps when:**
+- The column is frequently used in `WHERE`, `JOIN`, or `ORDER BY`.
+- The table is **large**, and the column has **high selectivity** (many distinct values — e.g. `empno`, `email`).
+
+❌ **Doesn't help much (or can hurt) when:**
+- The table is **small** (a full scan is already fast).
+- The column has **low selectivity** (few distinct values — e.g. a `gender` column with only 'M'/'F').
+- The table has **heavy INSERT/UPDATE/DELETE traffic** — every index must also be updated on every write, slowing writes down.
+
+### ⚠️ Points to Keep in Mind — Indexing
+
+- Indexes speed up **reads** but slow down **writes** (`INSERT`/`UPDATE`/`DELETE`), because the index itself must also be updated every time the underlying data changes.
+- Indexing every column "just in case" is a common beginner mistake — it bloats storage and slows down write-heavy tables for little to no read benefit.
+- A `PRIMARY KEY` is **always indexed automatically** — you never need to manually index it.
+- Using a function on an indexed column in a `WHERE` clause (e.g. `WHERE UPPER(ename) = 'SMITH'`) will **not use a normal index** unless you specifically create a **function-based index** on that expression.
+- `LIKE '%value'` (wildcard at the **start**) generally **cannot** use a standard index efficiently, since the index is sorted left-to-right; `LIKE 'value%'` (wildcard at the **end**) can.
+- To remove an index: `DROP INDEX index_name;`
+
+### 💼 Interview Questions — Indexing
+
+**Q1. Why not just index every column in every table?**
+Because indexes cost **storage** and **write performance** — every `INSERT`/`UPDATE`/`DELETE` has to update every index on that table too. Over-indexing can make write-heavy systems significantly slower for marginal or no read benefit, especially on low-selectivity columns.
+
+**Q2. If a table has only 10 rows, does adding an index make queries faster?**
+Not meaningfully — Oracle's optimizer will likely still choose a **Full Table Scan** for such a tiny table, since scanning 10 rows directly is already faster than the overhead of using an index structure.
+
+**Q3. Why doesn't `WHERE UPPER(ename) = 'SMITH'` use a normal index on `ename`?**
+Because the index was built on the **raw** `ename` values, not on `UPPER(ename)`. Applying a function to the column at query time means Oracle can't directly match against the existing index — you'd need a separate **function-based index** built specifically on `UPPER(ename)`.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 24. Normalization
+
+### What is Normalization
+
+**Normalization** is the process of **organizing data in a database** to **reduce redundancy** (duplicate data) and **improve data integrity**, by splitting large tables into smaller, related tables — connected via **Foreign Keys**.
+
+> This is exactly *why* we need **Joins** — because normalization intentionally spreads related data across multiple tables, joins are what bring that data back together for meaningful queries.
+
+### Why Normalize
+- Avoids **storing the same information multiple times** (e.g., a customer's address repeated in every order row).
+- Prevents **update anomalies** — if data is duplicated and you update it in one place but not another, the data becomes inconsistent.
+- Improves overall **data integrity and consistency**.
+
+### Normal Forms (Overview)
+
+| Normal Form | Rule |
+|---|---|
+| **1NF** (First Normal Form) | Each column must hold **atomic (indivisible)** values — no repeating groups or multi-valued columns in a single cell. |
+| **2NF** (Second Normal Form) | Must already be in 1NF, **and** every non-key column must depend on the **whole** primary key (relevant mainly for composite keys — removes **partial dependency**). |
+| **3NF** (Third Normal Form) | Must already be in 2NF, **and** no non-key column should depend on another **non-key column** (removes **transitive dependency**). |
+
+### Example — Un-normalized → Normalized
+
+**Before (violates 1NF — multiple phone numbers in one cell):**
+
+| StudentID | Name | Phones |
+|---|---|---|
+| 1 | Raju | 9999999999, 8888888888 |
+
+**After 1NF (atomic values, one row per phone):**
+
+| StudentID | Name | Phone |
+|---|---|---|
+| 1 | Raju | 9999999999 |
+| 1 | Raju | 8888888888 |
+
+**Example violating 3NF (transitive dependency):**
+
+| EmpID | DeptID | DeptName |
+|---|---|---|
+| 1 | 10 | Accounting |
+
+Here, `DeptName` depends on `DeptID`, **not directly on `EmpID`** — this is a transitive dependency. To fix it (achieve 3NF), split into two tables:
+
+**Employee table:**
+| EmpID | DeptID |
+|---|---|
+
+**Department table:**
+| DeptID | DeptName |
+|---|---|
+
+### Denormalization (the opposite, briefly)
+Sometimes, for **performance reasons** (fewer joins, faster reads on read-heavy systems like reporting/analytics), data is **intentionally denormalized** — some redundancy is reintroduced on purpose to avoid expensive joins. This is a deliberate trade-off, not a mistake.
+
+### ⚠️ Points to Keep in Mind — Normalization
+
+- Normalization reduces redundancy but **increases the number of joins** needed to retrieve combined data — that's the direct trade-off.
+- Most real-world relational schemas (like `EMP`/`DEPT`) are normalized to **3NF** as a practical sweet spot — going further (4NF, 5NF, BCNF) is less common outside specialized cases.
+- Over-normalizing can hurt **read performance** on very large, read-heavy systems — this is why **denormalization** is sometimes deliberately used for reporting/analytics tables.
+- A classic interview trap: normalization is about **reducing redundancy**, not about making tables "smaller" for its own sake — the actual goal is **data integrity**.
+
+### 💼 Interview Questions — Normalization
+
+**Q1. Why do we need Joins because of Normalization?**
+Because normalization deliberately splits related data into **separate tables** to avoid redundancy — so to reconstruct a full picture (e.g., employee name + department name), you **must** join those tables back together.
+
+**Q2. What's the difference between 2NF and 3NF in simple terms?**
+2NF removes **partial dependency** (a non-key column depending on only *part* of a composite primary key). 3NF removes **transitive dependency** (a non-key column depending on *another non-key column*, instead of directly on the primary key).
+
+**Q3. Is more normalization always better?**
+No — it's a trade-off. More normalization means less redundancy and better integrity, but **more joins** and potentially **slower reads** on very large systems. That's why **denormalization** is sometimes used deliberately for performance-critical reporting tables.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 25. 🎯 ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK
 
 A common source of confusion is picking the right tool for "Nth row / Nth highest / Top N" style questions. Here's the decision guide:
 
@@ -2207,12 +2858,110 @@ A common source of confusion is picking the right tool for "Nth row / Nth highes
 
 ---
 
-## 🔑 Interview Quick-Fire Points
+## 26. 🧭 Decision Guide — When to Use What
+
+The hardest part of SQL isn't knowing the syntax — it's knowing **which tool fits which question**. Here's a practical decision guide built around the phrasing of the question itself.
+
+### Step 1: What is the question actually asking?
+
+| Question phrasing | Tool to reach for |
+|---|---|
+| "Show me X **combined with** Y from two tables" (e.g. employee + department info together) | **JOIN** |
+| "Show me employees **even if** they have no department / matching record" | **OUTER JOIN** (Left/Right/Full) |
+| "Show me X where a **condition depends on a single aggregate value**" (e.g. "salary = max salary") | **Subquery** (non-correlated, single row) |
+| "Show me X where a **condition depends on a value that changes per row**" (e.g. "salary > average salary **of their own department**") | **Correlated Subquery** |
+| "Does at least one matching row exist?" (existence check, no need for the actual matched data) | **EXISTS / NOT EXISTS** (correlated) |
+| "Show me the **Nth** highest/lowest / **Top N**" | **DENSE_RANK()** (or `ROWNUM` for a simpler "just the top N rows" case) |
+| "Show me totals/counts/averages **per group**" (e.g. total salary per department) | **GROUP BY** + aggregate function |
+| "Show me totals/counts/averages **per group**, but only keep groups matching a condition" (e.g. departments with more than 3 employees) | **GROUP BY + HAVING** |
+| "Show me a value, categorized into custom labels/buckets" (e.g. "High"/"Low" based on salary) | **CASE Expression** |
+| "Combine results of two separate queries into one list" | **Set Operator** (`UNION`/`UNION ALL`/`INTERSECT`/`MINUS`) |
+| "Auto-generate a sequence of numbers" (e.g. for a primary key) | **SEQUENCE** |
+| "Automatically do something whenever a row is inserted/updated/deleted" | **TRIGGER** |
+| "Speed up searching/filtering on a large table" | **INDEX** |
+
+### Step 2: JOIN vs Subquery — which one?
+
+| | JOIN | Subquery |
+|---|---|---|
+| Best when | You need columns from **both** tables in the final output | You only need to **filter/compare** using a value from another table, not display its columns |
+| Performance (large data) | Generally faster (optimizer handles it in one pass) | Can be slower, especially if correlated (executes per row) |
+| Readability | Better for combining full row data | Better for "where value matches/compares to a computed result" |
+
+> **Rule of thumb:** If you need to **display** columns from another table → **JOIN**. If you only need to **check/compare** against another table's value → **Subquery**.
+
+### Step 3: Subquery vs Correlated Subquery — which one?
+
+| | Regular Subquery | Correlated Subquery |
+|---|---|---|
+| Depends on outer query? | ❌ No — runs once, independently | ✅ Yes — references outer query's column |
+| Executes | **Once**, total | **Once per row** of the outer query |
+| Best for | Fixed comparisons (e.g. "= overall max salary") | Per-row comparisons (e.g. "> average salary **of my own department**") |
+| Performance | Faster (single execution) | Slower on large tables (runs repeatedly) |
+
+> **Rule of thumb:** If the inner query's condition needs to reference something from the **current outer row** (like `e.deptno` inside the inner query), it's correlated — and it's the *only* way to express "compared to my own group" logic without `PARTITION BY`.
+
+### Step 4: Correlated Subquery vs Window Function (DENSE_RANK/PARTITION BY) — which one?
+
+Both can answer "compare this row to its group," but they solve **different shapes of question**:
+
+| | Correlated Subquery | Window Function (`PARTITION BY`) |
+|---|---|---|
+| Best for | "**Is this row above/below** a group aggregate" (yes/no filter) — e.g. "salary > dept average" | "**What rank/position** does this row hold" — e.g. "2nd highest salary per department" |
+| Returns | Filtered rows only (via `WHERE`) | Every row, **plus** a rank/position value attached |
+| Performance on large data | Slower (runs per row) | Generally faster (single pass with internal sorting) |
+| Typical clause | `WHERE sal > (SELECT AVG(sal) ...)` | `SELECT ..., DENSE_RANK() OVER (PARTITION BY ... ORDER BY ...)` |
+
+> **Rule of thumb:** If the question is "is this above/below the group's aggregate" → **Correlated Subquery**. If the question is "what position/rank does this hold within its group" (2nd, 3rd, Top N) → **Window Function** (`DENSE_RANK`/`RANK`/`ROW_NUMBER` + `PARTITION BY`).
+
+### Step 5: GROUP BY vs Window Function — which one?
+
+| | GROUP BY | Window Function |
+|---|---|---|
+| Rows returned | **One row per group** (collapses rows) | **Every original row** (keeps all detail, adds a computed column) |
+| Best for | "Give me totals/counts **per group**" | "Give me each row **plus** its rank/position within a group" |
+| Can combine with row-level detail? | ❌ No — loses individual row detail | ✅ Yes — every row's original detail is preserved |
+
+> **Rule of thumb:** If you want a **summary** (one row per department, say), use `GROUP BY`. If you want to see **every employee** with an extra "rank within department" column, use a window function with `PARTITION BY` — `GROUP BY` alone cannot do this.
+
+### Step 6: View vs Materialized View — which one?
+
+Already covered in depth in [Section 19](#19-views--materialized-views) — quick recap:
+
+> **Rule of thumb:** Need **always up-to-date** results and the query isn't too expensive? → **View**. Need **speed** on an expensive/repeated query, and can tolerate slightly-stale data until a refresh? → **Materialized View**.
+
+### 🧩 Worked Example — Same Data, Four Different Questions, Four Different Tools
+
+Given `emp` (with `ename`, `sal`, `deptno`) and `dept` (with `deptno`, `dname`):
+
+```sql
+-- 1) "Show employee name WITH their department name" → JOIN
+SELECT e.ename, d.dname FROM emp e JOIN dept d ON e.deptno = d.deptno;
+
+-- 2) "Show employees earning MORE than their OWN department's average" → Correlated Subquery
+SELECT * FROM emp e WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.deptno = e1.deptno);
+
+-- 3) "Show the 2nd highest salary PER department, with full row detail" → Window Function
+SELECT * FROM (
+    SELECT emp.*, DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) dk FROM emp
+) WHERE dk = 2;
+
+-- 4) "Show total salary PER department (just the totals)" → GROUP BY
+SELECT deptno, SUM(sal) FROM emp GROUP BY deptno;
+```
+
+Notice: all four questions touch the **same tables**, but the **shape of the question** decides the tool — that's the entire skill.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 27. 🔑 Interview Quick-Fire Points
 
 - `SEQUEL` was SQL's original name; introduced by Raymond Boyce & Donald Chamberlin.
 - Relational model → E.F. Codd. Document model → JSON/XML (MongoDB, Redis, Cassandra).
 - Always prefer **VARCHAR2** over VARCHAR in Oracle.
-- `PRIMARY KEY = UNIQUE + NOT NULL`.
+- `PRIMARY KEY = UNIQUE + NOT NULL`, and is **auto-indexed**.
 - Single Row Function → n input, n output. Multi Row Function → n input, 1 output.
 - Inner Join → matched rows only. Outer Joins → keep unmatched rows from one/both sides.
 - Natural Join has **no Oracle syntax**, ANSI only.
@@ -2225,12 +2974,21 @@ A common source of confusion is picking the right tool for "Nth row / Nth highes
 - `GRANT`/`REVOKE` require the target table to be accessed as `schema.tablename` by the grantee.
 - A **View** stores only a query (no data, always live); a **Materialized View** stores actual data (a physical snapshot) and needs manual/scheduled refresh to stay current.
 - `DENSE_RANK` = no gaps after ties; `RANK` = gaps after ties (Olympic-style); `ROW_NUMBER` = always unique, no ties possible.
+- A subquery becomes **correlated** the moment it references the outer query's column inside itself; it runs once per outer row.
+- `UNION` removes duplicates + sorts (slower); `UNION ALL` keeps duplicates (faster).
+- `ANY` = true if at least one match; `ALL` = true only if every value matches.
+- `EXISTS` is generally faster than `IN` for correlated checks, since it short-circuits on the first match.
+- `CASE` expressions evaluate top-to-bottom, first match wins — just like an `else-if` ladder.
+- Sequences are **not gap-free** — a rolled-back transaction still "burns" that `NEXTVAL`.
+- Triggers fire **automatically**; `:NEW`/`:OLD` give access to incoming/existing row values.
+- Indexes speed up reads but slow down writes — don't index every column.
+- Normalization reduces redundancy but increases the number of joins needed — that trade-off is exactly why joins exist.
 
 [⬆ Back to top](#-table-of-contents)
 
 ---
 
-## 💼 Most Asked Interview Questions
+## 28. 💼 Most Asked Interview Questions
 
 **1. What is the difference between DELETE, TRUNCATE and DROP?**
 | | DELETE | TRUNCATE | DROP |
@@ -2259,7 +3017,7 @@ A join of a table with itself using aliases. Common use case: employee–manager
 Inner Join returns only matched rows from both tables. Outer Join (Left/Right/Full) additionally returns unmatched rows with NULLs from one or both sides.
 
 **8. How do you find the 2nd highest / Nth highest salary?**
-Using an Inline View with `ROWNUM` (after sorting), or with `DENSE_RANK()` (see [Section 19](#19-ranking-functions--row_number-rank-dense_rank)):
+Using an Inline View with `ROWNUM` (after sorting), or with `DENSE_RANK()` (see [Section 21](#21-ranking-functions--row_number-rank-dense_rank)):
 ```sql
 SELECT * FROM (
     SELECT e.*, ROWNUM r FROM (SELECT * FROM emp ORDER BY sal DESC) e
@@ -2285,7 +3043,7 @@ Yes — as long as it hasn't been purged, using `FLASHBACK TABLE tabname TO BEFO
 `IN` compares a value against a **list** returned by the subquery (works best with smaller result sets). `EXISTS` merely checks whether the subquery returns **any row at all** (often faster for large/correlated subqueries since it can short-circuit).
 
 **15. What is Normalization? Why do we need Joins because of it?**
-Normalization splits data into multiple related tables to avoid redundancy and maintain data integrity. Because related data now lives in separate tables, **Joins** are required to bring that data back together meaningfully.
+Normalization splits data into multiple related tables to avoid redundancy and maintain data integrity. Because related data now lives in separate tables, **Joins** are required to bring that data back together meaningfully. See [Section 24](#24-normalization).
 
 **16. What's the difference between `NVL` and `NVL2`?**
 `NVL(a, b)` → returns `b` if `a` is NULL, else returns `a`.
@@ -2311,5 +3069,17 @@ Both give tied rows the same rank, but `RANK()` **skips** the next rank number(s
 
 **23. Why can't `DENSE_RANK()`/`RANK()`/`ROW_NUMBER()` be used directly in a `WHERE` clause?**
 Because window/ranking functions are evaluated **after** `WHERE`, `GROUP BY`, and `HAVING` — at the point `WHERE` runs, the rank column doesn't exist yet. You must compute the rank in an inline view/subquery, then filter on it in the **outer** query.
+
+**24. What is a Sequence, and are its generated numbers guaranteed to be gap-free?**
+A Sequence is a database object that generates numbers, typically for primary keys. It is **not** guaranteed gap-free — a rolled-back transaction still consumes (and permanently loses) that `NEXTVAL`.
+
+**25. What's the difference between a Trigger and a Constraint?**
+A **Constraint** (like `CHECK`, `FOREIGN KEY`) enforces simple, declarative rules on a column/table with minimal overhead. A **Trigger** can enforce far more complex, custom business logic (via PL/SQL) but adds overhead and complexity, and can be harder to debug since it fires silently.
+
+**26. Does adding an index always improve performance?**
+No — it improves **read** performance on large tables with high-selectivity columns, but it **slows down writes** (every `INSERT`/`UPDATE`/`DELETE` must also update the index) and adds storage overhead. On small tables or low-selectivity columns, it may provide little to no benefit.
+
+**27. When would you choose a Correlated Subquery over a Window Function (`PARTITION BY`), even though both can compare a row to its group?**
+When you only need a **yes/no filter** ("is this row above/below the group's aggregate") and don't need to know the row's exact **rank/position**. If you need the actual rank (2nd highest, Top N per group), a Window Function is the right tool instead. See the full [Decision Guide in Section 26](#26--decision-guide--when-to-use-what).
 
 [⬆ Back to top](#-table-of-contents)
