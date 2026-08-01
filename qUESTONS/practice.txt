@@ -1,0 +1,20 @@
+1.  select department_name, count(e.employee_id) , avg(salary)  from dept_practice d , emp_practice e where d.department_id(+) = e.department_id  group  by department_name  ;
+
+2. select e.first_name ||' ' ||  e.last_name , nvl(m.first_name ||' ' ||  m.last_name, 'No manager') from emp_practice e , emp_practice m where e.manager_id(+) = m.employee_id ;
+ 
+3. select e.first_name || ' ' || e.last_name as fullName , e.department_id , e.salary , dense_rank() over( partition by e.department_id order by salary desc ) from emp_practice e  ;
+
+4. select e.first_name , e.salary  , dense_rank() over(partition by department_id order by salary) from emp_practice e where e.salary > (select avg(salary) from emp_practice m where e.department_id = m.department_id) ;
+
+5.  select department_name from dept_practice where department_id in  ( select department_id from (select department_id , sum(salary) , dense_rank () over (order by sum(salary) desc) dk  from emp_practice group by department_id ) where dk=1)  ;
+
+6. select e.department_id , avg(salary) from emp_practice e where e.department_id is not null  group by department_id having avg(salary) > 9000 ;
+
+7.  select first_name || ' ' || last_name , salary , department_id from (select m.* , dense_rank () over( order by salary desc ) dk from emp_practice m ) where dk = 2  ;
+
+8.  select e.first_name , d.department_name ,  d.department_id from emp_practice e full outer join  dept_practice d on e.department_id = d.department_id ; WHERE e.department_id IS NULL 
+   OR d.department_id IS NOT NULL AND e.employee_id IS NULL ; 
+
+9.  select e.department_id , d.department_name from emp_practice e , dept_practice d where e.department_id = d.department_id and salary > 10000 ;
+
+10.   select department_id , department_name from dept_practice d  where  exists  (select department_id from emp_practice e  where salary > 10000 and d.department_id = e.department_id  ) ;

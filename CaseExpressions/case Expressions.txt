@@ -1,0 +1,31 @@
+create a table student with col id , name , marks and insert 5 to 10 records 
+2 . add one column grade 
+3. update grade based on the student marks 
+
+
+
+
+
+create table student columns (id number primary key , name varchar(20) , marks number check(marks >= 0 )) ;
+insert into students values (1 , 'sourabh' , 40 ) ;
+insert into students values (2 , 'sawan' , 80) ;
+insert into students values (3, 'sumit' , 75) ;
+insert into students values (4.'harsh' , 90) ;
+insert into students values (5, 'ayush',85);
+insert into students values (6, 'ram' , 74);
+insert into students values (7 , 'nayan' ,25) ;
+
+
+alter table students add grade char(1) ; 
+
+update students set grade = 
+case 
+when marks >= 90 then 'A' 
+when marks >= 60 then 'B' 
+when marks >= 33 then 'C'
+else 'F' 
+end
+; 
+
+
+
