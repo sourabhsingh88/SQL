@@ -1,6 +1,6 @@
-# 📘 Oracle SQL & DBMS – Complete Interview-Ready Notes
+# 📘 Oracle SQL & MySQL – Complete DBMS Interview Notes
 
-A complete, structured, interview-preparation-ready reference covering DBMS basics, Data Types, Constraints, DDL, DML, DCL, TCL, Functions, Joins, Operators, CASE Expressions, Subqueries, Sequences, Views, Ranking Functions, Triggers, Indexing, Normalization — plus a "when to use what" decision guide.
+Complete merged reference: Oracle syntax throughout, with **MySQL differences called out right where they occur** (labeled 🐬 MySQL). Covers DBMS basics, Data Types, Constraints, DDL, DML, DQL, Functions, Joins, Operators, CASE, Subqueries, Grouping, TCL, DCL, Views, Sequences, Ranking Functions, Triggers, Indexing, Normalization, and interview Q&A.
 
 ---
 
@@ -34,6 +34,7 @@ A complete, structured, interview-preparation-ready reference covering DBMS basi
 26. [🧭 Decision Guide — When to Use What](#26--decision-guide--when-to-use-what)
 27. [🔑 Interview Quick-Fire Points](#27--interview-quick-fire-points)
 28. [💼 Most Asked Interview Questions](#28--most-asked-interview-questions)
+29. [LPAD/RPAD, Hierarchical Queries (LEVEL), Type Conversion & DBA Concepts](#29-lpadrpad-hierarchical-queries-level-type-conversion--dba-concepts)
 
 ---
 
@@ -59,6 +60,8 @@ SQL is a query language used to interact with a database.
 
 ### DBMS
 Software used to manage and maintain a database using a language (SQL) by performing **CRUD** operations (Create, Read, Update, Delete).
+
+🐬 **MySQL note:** MySQL is itself one specific RDBMS implementation (open-source, owned by Oracle Corp. since 2010), while "Oracle Database" is a separate, older, commercial RDBMS product. Both use ANSI SQL as a base but diverge in vendor-specific syntax — that's what this whole file tracks.
 
 ---
 
@@ -152,6 +155,8 @@ CREATE TABLE student (gender CHAR(1));
 CHAR(5), store 'A' → |A| | | | |   (unused space still reserved)
 ```
 
+🐬 **MySQL:** `CHAR` works the same way; max size is **255 bytes** in MySQL (vs 2000 in Oracle).
+
 ### VARCHAR
 Stores **variable-length** character data (alphabets, numbers, special characters).
 - Max size **2000 bytes**, uses only the required memory — no wastage.
@@ -166,6 +171,8 @@ CREATE TABLE student (name VARCHAR(30));
 ```
 
 ✅ Saves memory, best when exact length is unknown (Employee Name, City, Address, Email).
+
+🐬 **MySQL:** `VARCHAR` is MySQL's **primary/standard** string type (up to 65,535 bytes per row, shared across all VARCHAR columns in that row) — unlike Oracle where VARCHAR is legacy and VARCHAR2 is preferred.
 
 ### CHAR vs VARCHAR
 
@@ -195,11 +202,28 @@ NUMBER(precision, scale)
 salary NUMBER(8,2)
 ```
 
+🐬 **MySQL:** No single `NUMBER` type. MySQL splits numeric types by purpose:
+| Oracle | MySQL Equivalent |
+|---|---|
+| `NUMBER(p)` (integer) | `INT`, `BIGINT`, `SMALLINT`, `TINYINT` |
+| `NUMBER(p,s)` (decimal) | `DECIMAL(p,s)` or `NUMERIC(p,s)` |
+| Floating point | `FLOAT`, `DOUBLE` |
+```sql
+-- MySQL equivalent
+salary DECIMAL(8,2)
+```
+
 ### DATE
-Stores date values. Oracle default format: `DD-MON-YY` (e.g. `29-JUN-26`) or `DD-MON-YYYY` (e.g. `29-JUN-2026`).
+Stores date values. Oracle default format: `DD-MON-YY` (e.g. `29-JUN-26`) or `DD-MON-YYYY` (e.g. `29-JUN-2026`). Oracle's `DATE` always includes both date **and** time (down to the second).
 ```sql
 hiredate DATE
 ```
+
+🐬 **MySQL:** `DATE` stores **date only** (`YYYY-MM-DD`), no time component. For date+time, MySQL uses a separate type:
+| Oracle | MySQL |
+|---|---|
+| `DATE` (has date+time) | `DATETIME` (date+time) or `DATE` (date only) |
+| — | `TIMESTAMP` (date+time, timezone-aware, auto-updates) |
 
 ### VARCHAR2
 Oracle's **recommended** variable-length character data type. Stores up to **4000 bytes**. Oracle internally converts `VARCHAR` to `VARCHAR2`.
@@ -215,6 +239,8 @@ ename VARCHAR2(50)
 
 > 💡 **Interview Note:** Always use **VARCHAR2** in Oracle instead of VARCHAR.
 
+🐬 **MySQL:** `VARCHAR2` **does not exist** in MySQL at all — this is 100% Oracle-only. Just use `VARCHAR(size)` in MySQL for everything.
+
 ### LOB (Large Object)
 Used to store very large data.
 | Type | Full Form | Stores |
@@ -227,17 +253,24 @@ resume CLOB
 photo BLOB
 ```
 
-### Summary of Data Types
-
-| Data Type | Used For |
+🐬 **MySQL:** `BLOB` exists in both (same name, same purpose). For large text, MySQL uses `TEXT` (or `LONGTEXT` for very large content) instead of `CLOB`.
+| Oracle | MySQL |
 |---|---|
-| CHAR | Fixed-length characters |
-| VARCHAR | Variable-length characters |
-| VARCHAR2 | Oracle variable-length characters |
-| NUMBER | Numbers |
-| DATE | Date values |
-| CLOB | Large text |
-| BLOB | Images, videos, files |
+| `CLOB` | `TEXT` / `LONGTEXT` |
+| `BLOB` | `BLOB` / `LONGBLOB` |
+
+### Summary of Data Types (Oracle → MySQL quick map)
+
+| Oracle Data Type | Used For | MySQL Equivalent |
+|---|---|---|
+| CHAR | Fixed-length characters | `CHAR` (same) |
+| VARCHAR | Variable-length characters | `VARCHAR` (same, but this is MySQL's standard, not legacy) |
+| VARCHAR2 | Oracle variable-length characters | `VARCHAR` (no VARCHAR2 in MySQL) |
+| NUMBER(p) | Whole numbers | `INT` / `BIGINT` / `SMALLINT` |
+| NUMBER(p,s) | Decimal numbers | `DECIMAL(p,s)` |
+| DATE | Date + time | `DATE` (date only) or `DATETIME` (date+time) |
+| CLOB | Large text | `TEXT` / `LONGTEXT` |
+| BLOB | Images, videos, files | `BLOB` / `LONGBLOB` (same) |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -289,6 +322,8 @@ age NUMBER CHECK(age >= 18)
 ```
 ✅ Allowed: 18, 25, 40 &nbsp;&nbsp; ❌ Not Allowed: 15, 12
 
+🐬 **MySQL note:** `CHECK` constraints were **silently ignored** in MySQL versions before 8.0.16 (parsed but not enforced!). From MySQL 8.0.16 onward, they're fully enforced — worth mentioning in interviews if asked about MySQL version quirks.
+
 ### 5) DEFAULT
 Assigns a default value when the user doesn't provide one.
 ```sql
@@ -315,6 +350,8 @@ CREATE TABLE employee (
 );
 ```
 
+🐬 **MySQL note:** Foreign keys are only enforced on the **InnoDB** storage engine — the older **MyISAM** engine silently ignores FK constraints. Always confirm engine type in MySQL interviews.
+
 ### Constraint Summary
 
 | Constraint | Purpose |
@@ -332,7 +369,7 @@ CREATE TABLE employee (
 - A table can have multiple UNIQUE constraints, but only **one** PRIMARY KEY.
 - A table *can* exist without a Primary Key, though it's not recommended.
 - FOREIGN KEY creates a **child–parent** relationship between two tables.
-- 🔗 A **PRIMARY KEY is automatically indexed** by Oracle — see [Section 23 – Indexing](#23-indexing).
+- 🔗 A **PRIMARY KEY is automatically indexed** by Oracle (and MySQL) — see [Section 23 – Indexing](#23-indexing).
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -370,15 +407,17 @@ RENAME oldtabname TO newtabname;
 RENAME emp TO student;
 ```
 
+🐬 **MySQL:** Syntax differs — `RENAME TABLE oldname TO newname;` (also supports renaming multiple tables in one statement).
+
 ### 3) ALTER
 `ALTER` is a DDL command used to alter (modify) the structure of an existing table.
 
-| Operation | Syntax |
-|---|---|
-| Add column | `ALTER TABLE tabn ADD coln datatype constraint;` |
-| Rename column | `ALTER TABLE tabn RENAME COLUMN oldcoln TO newcoln;` |
-| Drop column | `ALTER TABLE tabn DROP COLUMN columnname;` |
-| Modify column | `ALTER TABLE tabname MODIFY colname datatype constraint;` |
+| Operation | Oracle Syntax | 🐬 MySQL Syntax |
+|---|---|---|
+| Add column | `ALTER TABLE tabn ADD coln datatype constraint;` | Same |
+| Rename column | `ALTER TABLE tabn RENAME COLUMN oldcoln TO newcoln;` | Same (8.0+) |
+| Drop column | `ALTER TABLE tabn DROP COLUMN columnname;` | Same |
+| Modify column | `ALTER TABLE tabname MODIFY colname datatype constraint;` | `ALTER TABLE tabname MODIFY COLUMN colname datatype;` (COLUMN keyword often required) or `CHANGE oldcol newcol datatype;` to rename+retype together |
 
 ```sql
 -- Add column
@@ -407,6 +446,8 @@ SELECT * FROM stud;
 -- no rows selected
 ```
 
+🐬 **MySQL:** Same command and behavior. Also resets `AUTO_INCREMENT` counter back to 1 (Oracle has no auto-increment counter to reset since it uses separate SEQUENCE objects).
+
 ### 5) DROP
 `DROP` is a DDL command used to **delete a table**. The table gets moved to the **recycle bin** (it isn't gone forever — yet).
 ```sql
@@ -416,6 +457,8 @@ DROP TABLE tabname;
 DROP TABLE student;
 -- Table dropped.
 ```
+
+🐬 **MySQL:** `DROP TABLE` deletes the table **immediately and permanently** — MySQL has **no recycle bin concept**. This is a key Oracle vs MySQL interview difference.
 
 ### 6) FLASHBACK
 `FLASHBACK` is a DDL command used to **retrieve a table back from the recycle bin**.
@@ -437,6 +480,8 @@ SELECT original_name FROM recyclebin;
 | movie |
 | Director |
 
+🐬 **MySQL:** `FLASHBACK` **does not exist** in MySQL — this is 100% Oracle-only. In MySQL, once you drop a table it's gone; recovery relies entirely on backups or binary logs.
+
 ### 7) PURGE
 `PURGE` is a DDL command used to **permanently delete a table from the recycle bin**. The table **must be present** in the recycle bin (i.e. must have been dropped first).
 ```sql
@@ -455,6 +500,8 @@ PURGE TABLE stud;
 ORA-38307: object not in RECYCLEBIN
 ```
 👉 You must `DROP` the table first (which sends it to the recycle bin), and *then* `PURGE` it.
+
+🐬 **MySQL:** `PURGE` **does not exist** in MySQL either (Oracle-only, tied to the recycle bin concept). The closest MySQL analog, `PURGE BINARY LOGS`, is completely unrelated — it clears old replication log files, not dropped tables.
 
 ### Full DDL Walkthrough Example
 
@@ -506,15 +553,15 @@ PURGE TABLE stud;
 
 ### DDL Command Summary
 
-| Command | Purpose | Structure affected? | Recoverable? |
-|---|---|---|---|
-| `CREATE` | Create new object | — | — |
-| `RENAME` | Rename table | No | — |
-| `ALTER` | Add/Modify/Drop/Rename column | Yes | — |
-| `TRUNCATE` | Delete all rows, keep structure | No | ❌ Not recoverable |
-| `DROP` | Delete table (→ recycle bin) | Yes | ✅ via FLASHBACK |
-| `FLASHBACK` | Restore dropped table | — | — |
-| `PURGE` | Permanently remove from recycle bin | Yes | ❌ Not recoverable |
+| Command | Purpose | Structure affected? | Recoverable? | 🐬 In MySQL? |
+|---|---|---|---|---|
+| `CREATE` | Create new object | — | — | ✅ Same |
+| `RENAME` | Rename table | No | — | ✅ `RENAME TABLE` |
+| `ALTER` | Add/Modify/Drop/Rename column | Yes | — | ✅ Same (minor syntax diff) |
+| `TRUNCATE` | Delete all rows, keep structure | No | ❌ Not recoverable | ✅ Same |
+| `DROP` | Delete table (→ recycle bin) | Yes | ✅ via FLASHBACK | ⚠️ Deletes permanently, no recycle bin |
+| `FLASHBACK` | Restore dropped table | — | — | ❌ Doesn't exist |
+| `PURGE` | Permanently remove from recycle bin | Yes | ❌ Not recoverable | ❌ Doesn't exist |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -537,6 +584,8 @@ INSERT INTO stud VALUES (101, 'ramesh');
 INSERT INTO stud (sid, name) VALUES (102, 'ramya');
 ```
 
+🐬 **MySQL:** Identical syntax. MySQL also supports a shorthand `INSERT INTO tabn SET col1=v1, col2=v2;` which Oracle doesn't have.
+
 ### 2) UPDATE
 `UPDATE` is a DML command used to update existing records.
 ⚠️ **Always use a `WHERE` condition** — otherwise every row in the table gets updated.
@@ -558,6 +607,8 @@ DELETE FROM tabn WHERE cond;
 ```sql
 DELETE FROM emp WHERE job = 'CLERK';
 ```
+
+Identical in both Oracle and MySQL.
 
 ### DML Command Summary
 
@@ -614,6 +665,8 @@ coln/exp AS alias-name
 coln/exp alias-name
 ```
 
+🐬 **MySQL:** Same alias forms, but MySQL uses **backticks** ( `` ` `` ) instead of double quotes for identifiers with spaces/reserved words: `` coln AS `alias name` `` (Oracle uses `"alias name"`).
+
 ### Selection
 **Selection** is a way of selecting **rows** and displaying data that satisfies a given condition.
 ```sql
@@ -666,6 +719,8 @@ SELECT ename, (sal*12) + (sal*12*0.15) AS annual_salary FROM emp;
 SELECT ename, (sal*12) - (sal*12*0.10) AS annual_salary FROM emp;
 ```
 
+🐬 **MySQL:** All SELECT/WHERE/alias/computed-column syntax above is identical in MySQL — no differences here.
+
 [⬆ Back to top](#-table-of-contents)
 
 ---
@@ -689,6 +744,10 @@ A **function** is a block of code used to perform a specific task.
 | `LOWER(arg)` | To lowercase | `SELECT LOWER('RAJU') FROM dual;` | raju |
 | `INITCAP(arg)` | Capitalize first letter of each word | `SELECT INITCAP('manoj is kind') FROM dual;` | Manoj Is Kind |
 
+🐬 **MySQL:** `UPPER`/`LOWER` same. `INITCAP` **doesn't exist** in MySQL — must build it manually with `CONCAT(UPPER(LEFT(str,1)), LOWER(SUBSTRING(str,2)))` or a stored function.
+
+> 🐬 Also — Oracle's `FROM dual` (a dummy 1-row table used for expression evaluation) has **no equivalent requirement in MySQL**; MySQL allows `SELECT UPPER('raju');` directly with no FROM clause at all (though `FROM dual` is still accepted for compatibility).
+
 **Character Manipulation**
 
 `SUBSTR('str', pos, len)` – extracts characters from a string.
@@ -697,11 +756,17 @@ A **function** is a block of code used to perform a specific task.
 - First half: `SUBSTR(ename,1,FLOOR(LENGTH(ename)/2))`
 - Second half: `SUBSTR(ename,CEIL(LENGTH(ename)/2))`
 
+🐬 **MySQL:** Use `SUBSTRING()` (both `SUBSTR` and `SUBSTRING` actually work in MySQL as aliases — but `SUBSTRING` is the standard/preferred name).
+
 `CONCAT('arg1','arg2')` – joins two strings.
 - `SELECT CONCAT('Hi:',empname) FROM emp;`
 
+🐬 **MySQL:** `CONCAT()` same, but MySQL also supports the `+`-style shortcut differently — actually MySQL does **not** support `||` by default either unless `PIPES_AS_CONCAT` SQL mode is set. Oracle uses `||` as its native string concatenation operator (e.g. `'Hi:' || empname`) — this doesn't work in default MySQL, always use `CONCAT()` there.
+
 `REVERSE('arg')` – reverses a string.
 - `SELECT REVERSE('FORD') FROM dual;` → `DORF`
+
+🐬 **MySQL:** Same function name, same behavior.
 
 `INSTR('str','char',pos,nth_occ)` – finds position/index of a character.
 - `SELECT INSTR('NAYAN','A',1,1) FROM dual;` → 2
@@ -709,12 +774,18 @@ A **function** is a block of code used to perform a specific task.
 - Count occurrences of 'P': `LENGTH('Pushpa') - LENGTH(REPLACE('Pushpa','P',''))`
 - Domain from email: `SUBSTR(email, INSTR(email,'@')+1)`
 
+🐬 **MySQL:** `INSTR(str, substr)` exists but only takes **2 arguments** (no start-position or nth-occurrence params like Oracle's 4-argument version). For advanced positional search, use `LOCATE(substr, str, start_pos)` instead.
+
 `TRIM(LEADING/TRAILING/BOTH 'char' FROM 'str')` – removes leading/trailing/both characters.
 - `TRIM(LEADING 'P' FROM 'PUSHPA')` → `USHPA`
 - `TRIM(TRAILING 'A' FROM 'PUSHPA')` → `PUSHP`
 
+🐬 **MySQL:** Same `TRIM(LEADING/TRAILING/BOTH 'x' FROM str)` syntax supported identically.
+
 `REPLACE('str','substr','newstr')` – replaces **all occurrences**.
 - `REPLACE('BANGLORE','B','M')` → `MANGLORE`
+
+🐬 **MySQL:** Identical.
 
 ### B. Number Single Row Function
 
@@ -722,50 +793,93 @@ A **function** is a block of code used to perform a specific task.
 |---|---|---|---|
 | `MOD(m,n)` | Remainder | `MOD(11,2)` | 2 |
 | `SQRT(arg)` | Square root | `SQRT(100)` | 10 |
-| `POWER(m,n)` | Exponent | `POWER(2,5)` | 32 |
-| `ABS(arg)` | Positive value | `ABS(-10)` | 10 |
-| `ROUND(num,scale)` | Round to nearest value | see below | — |
+| `POWER(m,n)` | m raised to power n | `POWER(2,3)` | 8 |
+| `ROUND(n,d)` | Rounds to d decimal places | `ROUND(45.926,2)` | 45.93 |
+| `TRUNC(n,d)` | Truncates (no rounding) to d places | `TRUNC(45.926,2)` | 45.92 |
+| `CEIL(n)` | Smallest integer ≥ n | `CEIL(4.1)` | 5 |
+| `FLOOR(n)` | Largest integer ≤ n | `FLOOR(4.9)` | 4 |
+| `ABS(n)` | Absolute value | `ABS(-7)` | 7 |
+| `SIGN(n)` | Returns -1, 0, or 1 | `SIGN(-45)` | -1 |
 
-**ROUND rule:** decimal 0–4 → rounds down, decimal 5–9 → rounds up.
-- `ROUND(37.7494,1)` → 37.7
-- `ROUND(789.12,-2)` → 800 *(negative scale rounds left of decimal — tens/hundreds/thousands)*
+> 💡 `ROUND` vs `TRUNC`: ROUND adjusts based on the next digit, TRUNC just chops it off. `ROUND(45.926,0)=46`, `TRUNC(45.926,0)=45`.
 
-### C. Date Single Row Function
+🐬 **MySQL:** All identical **except** `TRUNC` → in MySQL it's spelled `TRUNCATE(n,d)` (extra letters, easy to confuse with the DDL `TRUNCATE TABLE` command — context tells them apart). Everything else (`MOD`, `SQRT`, `POWER`, `ROUND`, `CEIL`/`CEILING`, `FLOOR`, `ABS`, `SIGN`) works the same in both.
 
-| Function | Purpose | Example | Result |
-|---|---|---|---|
-| `ADD_MONTHS('date',n)` | Adds n months | `ADD_MONTHS('07-JUL-2026',12)` | 07-JUL-2027 |
-| `MONTHS_BETWEEN('d1','d2')` | Diff in months | `MONTHS_BETWEEN('07-JUL-2027','07-JUL-2026')` | 12 |
-| `EXTRACT(YEAR/MONTH/DAY FROM col)` | Extracts date part | `EXTRACT(MONTH FROM hiredate)` | month number |
-| `LAST_DAY('date')` | Last day of month | `LAST_DAY('12-FEB-2020')` | 29-FEB-2020 |
-| `SYSDATE` | Current system date | `SELECT SYSDATE FROM dual;` | — |
+### C. Date Functions (Oracle)
 
-### D. General Single Row Function
-Used to handle `NULL` values.
+| Function | Purpose | Example |
+|---|---|---|
+| `SYSDATE` | Current date & time | `SELECT SYSDATE FROM dual;` |
+| `MONTHS_BETWEEN(d1,d2)` | Number of months between two dates | `MONTHS_BETWEEN(SYSDATE, hiredate)` |
+| `ADD_MONTHS(date,n)` | Adds n months to a date | `ADD_MONTHS(SYSDATE, 3)` |
+| `NEXT_DAY(date,'day')` | Next occurrence of given weekday | `NEXT_DAY(SYSDATE,'MONDAY')` |
+| `LAST_DAY(date)` | Last day of the month | `LAST_DAY(SYSDATE)` |
+| `ROUND(date,'fmt')` | Rounds a date (year/month) | `ROUND(SYSDATE,'YEAR')` |
+| `TRUNC(date,'fmt')` | Truncates a date | `TRUNC(SYSDATE,'MONTH')` |
 
-- `NVL(arg1, arg2)` → if arg1 is null, returns arg2; else returns arg1.
-- `NVL2(arg1, arg2, arg3)` → if arg1 is null, returns arg3; else returns arg2.
+**Date Arithmetic:** In Oracle, `date + number` = adds days. `date1 - date2` = number of days between them.
+```sql
+SELECT hiredate + 30 FROM emp;          -- 30 days after hiredate
+SELECT SYSDATE - hiredate FROM emp;     -- days employed
+```
 
-### Multi Row / Group / Aggregate Function
+🐬 **MySQL equivalents (this whole section differs significantly):**
+
+| Oracle | 🐬 MySQL |
+|---|---|
+| `SYSDATE` | `NOW()` or `SYSDATE()` |
+| `MONTHS_BETWEEN(d1,d2)` | `TIMESTAMPDIFF(MONTH,d2,d1)` |
+| `ADD_MONTHS(date,n)` | `DATE_ADD(date, INTERVAL n MONTH)` |
+| `date + n` (add days) | `DATE_ADD(date, INTERVAL n DAY)` — MySQL does **not** allow plain `date + n` for day-arithmetic like Oracle does |
+| `date1 - date2` (days between) | `DATEDIFF(date1, date2)` |
+| `LAST_DAY(date)` | `LAST_DAY(date)` — same |
+| `NEXT_DAY(date,'day')` | No direct equivalent — simulate with `DATE_ADD` + `WEEKDAY()` math |
+| `ROUND(date,'fmt')` / `TRUNC(date,'fmt')` | No direct equivalent — use `DATE_FORMAT()` combined with string rebuilding |
+
+### D. Conversion Functions
+
+| Function | Purpose | Example |
+|---|---|---|
+| `TO_CHAR(value,'fmt')` | Converts number/date → string | `TO_CHAR(SYSDATE,'DD-MON-YYYY')` |
+| `TO_DATE('str','fmt')` | Converts string → date | `TO_DATE('29-06-2026','DD-MM-YYYY')` |
+| `TO_NUMBER('str')` | Converts string → number | `TO_NUMBER('123')` |
+
+```sql
+SELECT TO_CHAR(sal,'99,999.99') FROM emp;   -- formats number with commas
+SELECT TO_CHAR(hiredate,'DD-MON-YYYY') FROM emp;
+```
+
+🐬 **MySQL equivalents:**
+| Oracle | 🐬 MySQL |
+|---|---|
+| `TO_CHAR(date,'fmt')` | `DATE_FORMAT(date,'%d-%m-%Y')` |
+| `TO_DATE('str','fmt')` | `STR_TO_DATE('str','%d-%m-%Y')` |
+| `TO_NUMBER('str')` | `CAST(str AS SIGNED)` or `CAST(str AS DECIMAL)` |
+
+> ⚠️ Format model codes differ too: Oracle uses `DD-MON-YYYY`, MySQL uses `%d-%b-%Y` (percent-prefixed codes) — a common source of bugs when porting queries between the two.
+
+### E. Multi-Row (Aggregate/Group) Functions
+
+n input rows → 1 output value. Ignore NULLs (except `COUNT(*)`).
 
 | Function | Purpose |
 |---|---|
-| `MAX(arg)` | Returns max value |
-| `MIN(arg)` | Returns min value |
-| `AVG(arg)` | Returns average value |
-| `SUM(arg)` | Returns sum of values |
-| `COUNT(*/col)` | Returns count of rows |
+| `SUM(col)` | Total of numeric column |
+| `AVG(col)` | Average |
+| `COUNT(col/*)` | Number of rows |
+| `MAX(col)` | Maximum value |
+| `MIN(col)` | Minimum value |
 
 ```sql
-SELECT MAX(sal) FROM emp;
-SELECT SUM(sal) FROM emp WHERE job='SALESMAN';
+SELECT SUM(sal), AVG(sal), COUNT(*), MAX(sal), MIN(sal) FROM emp;
+
+-- Department-wise total salary
+SELECT deptno, SUM(sal) FROM emp GROUP BY deptno;
 ```
 
-⚠️ We **cannot** use a normal column with an aggregate function without `GROUP BY`.
-```sql
--- Needs GROUP BY
-SELECT ename, SUM(sal) FROM emp GROUP BY ename;
-```
+> ⚠️ Any column in `SELECT` alongside an aggregate function **must** appear in `GROUP BY` — this is a very common interview trap.
+
+🐬 **MySQL note:** Identical function names/behavior — **but** MySQL historically allowed non-aggregated, non-GROUP-BY columns in SELECT (silently picking an arbitrary row) unless `ONLY_FULL_GROUP_BY` SQL mode is enabled. Since MySQL 5.7.5+, `ONLY_FULL_GROUP_BY` is **on by default**, making it behave like Oracle (strict about this rule).
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -773,136 +887,57 @@ SELECT ename, SUM(sal) FROM emp GROUP BY ename;
 
 ## 8. SQL Joins
 
-A **JOIN** combines data from two or more tables based on a common column/relationship. Since normalization stores related data across different tables, joins are used to retrieve meaningful combined information.
-
-**Example — why we need joins:**
-
-EMP table + DEPT table → combine to get `ENAME, DNAME, LOCATION` together.
+A **JOIN** combines rows from two or more tables based on a related column.
 
 ### Types of Joins
-1. Cross Join (Cartesian Join)
-2. Inner Join (Equi Join)
-3. Non-Equi Join
-4. Natural Join
-5. Self Join
-6. Left Outer Join
-7. Right Outer Join
-8. Full Outer Join
+1. **INNER JOIN** – returns only matching rows from both tables.
+2. **LEFT (OUTER) JOIN** – all rows from left table + matched rows from right (unmatched → NULL).
+3. **RIGHT (OUTER) JOIN** – all rows from right table + matched rows from left.
+4. **FULL (OUTER) JOIN** – all rows from both tables, matched where possible.
+5. **SELF JOIN** – a table joined with itself.
+6. **CROSS JOIN** – Cartesian product (every row × every row).
 
-### 1) Cross Join (Cartesian Join)
-Returns every row of table A combined with every row of table B. **No join condition.**
-```text
-Rows(A) × Rows(B)  →  e.g. EMP(14) × DEPT(4) = 56 rows
-```
 ```sql
--- ANSI
-SELECT * FROM emp CROSS JOIN dept;
--- Oracle old (no WHERE)
-SELECT * FROM emp, dept;
-```
-Used rarely — mostly for generating combinations.
+-- INNER JOIN
+SELECT e.ename, d.dname
+FROM emp e
+INNER JOIN dept d ON e.deptno = d.deptno;
 
-### 2) Inner Join (Equi Join)
-Returns only rows that satisfy the join condition — **matched records only**.
+-- LEFT JOIN
+SELECT e.ename, d.dname
+FROM emp e
+LEFT JOIN dept d ON e.deptno = d.deptno;
+
+-- FULL OUTER JOIN
+SELECT e.ename, d.dname
+FROM emp e
+FULL OUTER JOIN dept d ON e.deptno = d.deptno;
+
+-- CROSS JOIN
+SELECT e.ename, d.dname FROM emp e CROSS JOIN dept d;
+```
+
+🐬 **MySQL note:** `INNER JOIN`, `LEFT JOIN`, `RIGHT JOIN`, `CROSS JOIN` are all identical. But MySQL does **not** support `FULL OUTER JOIN` directly — must simulate with `UNION`:
 ```sql
--- ANSI
-SELECT e.ename, d.dname FROM emp e INNER JOIN dept d ON e.deptno=d.deptno;
--- Oracle old
-SELECT e.ename, d.dname FROM emp e, dept d WHERE e.deptno=d.deptno;
+SELECT e.ename, d.dname FROM emp e LEFT JOIN dept d ON e.deptno=d.deptno
+UNION
+SELECT e.ename, d.dname FROM emp e RIGHT JOIN dept d ON e.deptno=d.deptno;
 ```
-- To apply an Inner Join, a relationship must exist (**direct** or **indirect** via intermediate tables).
-- For indirect/chained joins (e.g. `employees → departments → locations → countries → regions`), you must join through every table in the chain even if you don't display all its columns.
-- Works with **aggregate functions** too (`COUNT`, `SUM`, etc.) — remember `GROUP BY` rules apply.
 
-### 3) Non-Equi Join
-Uses operators **other than `=`**: `BETWEEN`, `>`, `<`, `>=`, `<=`.
+### Old-style Oracle Join Syntax (pre-ANSI, still asked in interviews)
 ```sql
--- ANSI
-SELECT e.ename, e.sal, s.grade FROM emp e JOIN salgrade s ON e.sal BETWEEN s.losal AND s.hisal;
+-- INNER JOIN (old style)
+SELECT e.ename, d.dname FROM emp e, dept d WHERE e.deptno = d.deptno;
+
+-- LEFT OUTER JOIN (old Oracle-specific syntax using (+))
+SELECT e.ename, d.dname FROM emp e, dept d WHERE e.deptno = d.deptno(+);
+
+-- RIGHT OUTER JOIN (old style)
+SELECT e.ename, d.dname FROM emp e, dept d WHERE e.deptno(+) = d.deptno;
 ```
-Used whenever the join condition is a **range**, not an exact match (e.g. matching salary against `SALGRADE` ranges).
+> The `(+)` goes on the side that can have **missing/NULL** matches.
 
-### 4) Natural Join
-Automatically joins two tables based on columns having the **same name** — no join condition written.
-```sql
-SELECT ename, dname FROM emp NATURAL JOIN dept;
-```
-- Available **only in ANSI syntax** (no Oracle old-style equivalent).
-- If tables share a real relationship column → behaves like **INNER JOIN**.
-- If tables have no common column → behaves like **CROSS JOIN** (n × m).
-- ⚠️ Risky if multiple columns unintentionally share the same name — can cause wrong/unexpected joins. Used less often in practice for this reason.
-
-### 5) Self Join
-A table joined with **itself**, using aliases — commonly used for employee–manager relationships (or any hierarchical data). See a full worked example in [Section 10](#10-self-join--family-tree-example).
-```sql
--- ANSI
-SELECT e.ename Employee, m.ename Manager FROM emp e JOIN emp m ON e.mgr=m.empno;
--- Oracle old
-SELECT e.ename Employee, m.ename Manager FROM emp e, emp m WHERE e.mgr=m.empno;
-```
-- Can be extended to multiple levels — e.g. employee → manager → manager's manager (3 self-joins).
-- Also useful to find **duplicate values** (e.g. employees sharing the same salary):
-```sql
-SELECT DISTINCT e.sal FROM emp e, emp e1 WHERE e.sal = e1.sal AND e.empno != e1.empno;
-```
-
-### 6), 7), 8) Outer Joins — Introduction
-
-There are **three types of Outer Joins**:
-- **Left Outer Join**
-- **Right Outer Join**
-- **Full Outer Join**
-
-An **Outer Join** is a type of SQL join that returns the **matched records** as well as the **unmatched records with NULL values**.
-
-**Left Outer Join** → returns matched records from the **left table & right table**, plus unmatched records from the **left table** with NULL values.
-```sql
--- ANSI
-SELECT * FROM tab1 LEFT OUTER JOIN tab2 ON cond;
--- Oracle old
-SELECT * FROM tab1, tab2 WHERE tab1.col = tab2.col(+);
-```
-
-**Right Outer Join** → returns matched records from the **right table & left table**, plus unmatched records from the **right table** with NULL values.
-```sql
--- ANSI
-SELECT * FROM tab1 RIGHT OUTER JOIN tab2 ON cond;
--- Oracle old
-SELECT * FROM tab1, tab2 WHERE tab1.col(+) = tab2.col;
-```
-
-**Full Outer Join** → returns matched records from **both tables**, plus unmatched records from **both** the left table and the right table with NULL values.
-```sql
--- ANSI
-SELECT * FROM tab1 FULL JOIN tab2 ON cond;
--- Oracle old syntax: not supported — use LEFT JOIN UNION RIGHT JOIN instead
-```
-
-> 🧠 **Memory trick:** The `(+)` symbol goes on the side that is *missing/deficient* — i.e. it marks the table that gets NULL-padded for unmatched rows.
-
-Full detailed examples with sample data are worked through in [Section 9](#9-outer-joins--practical-walkthrough).
-
-### ANSI vs Oracle Old Syntax
-
-| ANSI SQL | Oracle Old Syntax |
-|---|---|
-| Uses `JOIN` keyword | Uses commas |
-| Uses `ON` clause | Uses `WHERE` clause |
-| Easier to read | Older style |
-| Recommended | Legacy code |
-
-### Join Summary Table
-
-| Join Type | Matching Records | Non-Matching Records |
-|---|---|---|
-| Cross Join | No condition | Every combination |
-| Inner Join | Yes | No |
-| Non-Equi Join | Range/comparison | Depends on condition |
-| Natural Join | Automatic matching | No |
-| Self Join | Same table | Depends on condition |
-| Left Outer Join | Yes | All left rows |
-| Right Outer Join | Yes | All right rows |
-| Full Outer Join | Yes | All rows from both tables |
+🐬 **MySQL:** The `(+)` operator is **100% Oracle-only syntax** — doesn't exist in MySQL at all. MySQL always requires standard ANSI `JOIN ... ON` syntax.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -910,104 +945,28 @@ Full detailed examples with sample data are worked through in [Section 9](#9-out
 
 ## 9. Outer Joins – Practical Walkthrough
 
-Sample data used throughout this section:
-
-**Student table**
-
-| sid | name | subid |
-|---|---|---|
-| 1 | indu | s3 |
-| 2 | bindu | — |
-| 3 | dindu | s1 |
-| 4 | chondu | s3 |
-| 5 | nendu | — |
-
-**Subject table**
-
-| subid | sname |
-|---|---|
-| s1 | Java |
-| s2 | sql |
-| s3 | web |
-| s4 | Python |
-
-### Left Outer Join
-
-Keeps **every student**, even one not registered for any subject.
-```sql
--- ANSI
-SELECT name, sname FROM student s LEFT OUTER JOIN subject sb ON s.subid = sb.subid;
-
--- Oracle old
-SELECT name, sname FROM student s, subject sb WHERE s.subid = sb.subid(+);
-```
-
-| name | sname |
-|---|---|
-| indu | web |
-| bindu | — |
-| dindu | Java |
-| chondu | web |
-| nendu | — |
-
-### Right Outer Join
-
-Keeps **every subject**, even one that has no students registered for it.
-```sql
--- ANSI
-SELECT name, sname FROM student s RIGHT OUTER JOIN subject sb ON s.subid = sb.subid;
-
--- Oracle old
-SELECT name, sname FROM student s, subject sb WHERE s.subid(+) = sb.subid;
-```
-
-| name | sname |
-|---|---|
-| indu | web |
-| dindu | Java |
-| chondu | web |
-| — | sql |
-| — | Python |
-
-### Full Outer Join
-
-Keeps **every student and every subject**, matched or not.
-```sql
--- ANSI
-SELECT name, sname FROM student s FULL OUTER JOIN subject sb ON s.subid = sb.subid;
-```
-
-| name | sname |
-|---|---|
-| indu | web |
-| dindu | Java |
-| chondu | web |
-| — | sql |
-| — | Python |
-| bindu | — |
-| nendu | — |
-
-### Practice Questions (with NULL filtering)
+**Scenario:** `emp` table has employees, some with `deptno = NULL` (not yet assigned to a department). `dept` table has departments, some with no employees.
 
 ```sql
--- Q1: Find student name, subject name, considering the student
---     even if they are not registered to any subject.
-SELECT s.name, sb.sname FROM student s LEFT JOIN subject sb ON s.subid = sb.subid;
+-- Employees with no department assigned (LEFT JOIN + IS NULL)
+SELECT e.ename
+FROM emp e
+LEFT JOIN dept d ON e.deptno = d.deptno
+WHERE d.deptno IS NULL;
 
--- Q2: Find name, subject name, considering the subject
---     even if no student is registered for it.
-SELECT s.name, sb.sname FROM student s RIGHT JOIN subject sb ON s.subid = sb.subid;
+-- Departments with no employees (RIGHT JOIN + IS NULL)
+SELECT d.dname
+FROM emp e
+RIGHT JOIN dept d ON e.deptno = d.deptno
+WHERE e.empno IS NULL;
 
--- Q3: Find student name when the student is NOT registered to any subject.
-SELECT s.name FROM student s LEFT JOIN subject sb ON s.subid = sb.subid
-WHERE s.subid IS NULL;
-
--- Q4: Find subject name when NO student is registered to it.
-SELECT sb.sname FROM student s RIGHT JOIN subject sb ON s.subid = sb.subid
-WHERE s.subid IS NULL;
+-- Symmetric difference: employees w/o dept UNION depts w/o employees
+SELECT e.ename, NULL AS dname FROM emp e WHERE e.deptno IS NULL
+UNION
+SELECT NULL, d.dname FROM dept d WHERE d.deptno NOT IN (SELECT deptno FROM emp WHERE deptno IS NOT NULL);
 ```
 
-> 💡 **Pattern:** `LEFT/RIGHT JOIN + WHERE <joined-key> IS NULL` is the classic trick to find **unmatched / orphan records** (students with no subject, subjects with no students, etc).
+This "LEFT JOIN + WHERE right.key IS NULL" pattern is a classic interview trick for finding **unmatched rows** — works identically in Oracle and MySQL, no differences here.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1015,57 +974,62 @@ WHERE s.subid IS NULL;
 
 ## 10. Self Join – Family Tree Example
 
-A **Self Join** joins a table to itself — perfect for hierarchical / recursive relationships such as a family tree.
-
-**Family table**
-
-| Son | Father |
-|---|---|
-| Kalia | Raju |
-| Jaggu | dolu |
-| bheem | Chutki |
-| Chutki | Kalia |
-| Rahul | bheem |
-| dolu | abhi |
-
-### Q1: Find the Grandfather
-
-A grandfather is the **father of the father**. Self-join the table once, matching `son.father = father.son`.
+A **Self Join** joins a table to itself, typically to model hierarchical/recursive relationships (employee–manager, parent–child).
 
 ```sql
-SELECT s.son, gf.father AS grandfather
-FROM family s
-LEFT JOIN family gf ON s.father = gf.son;
+CREATE TABLE person (
+    id NUMBER PRIMARY KEY,
+    name VARCHAR2(30),
+    parent_id NUMBER
+);
 ```
 
-| Grand-Son | Grandfather |
-|---|---|
-| Kalia | — |
-| Jaggu | abhi |
-| bheem | Kalia |
-| Chutki | Raju |
-| Rahul | Chutki |
-| dolu | — |
-
-*(LEFT JOIN is used so grandsons whose grandfather isn't in the table still appear, with NULL.)*
-
-### Q2: Find the Great-Grandfather
-
-A great-grandfather is the **father of the grandfather**. Self-join the table **twice**.
+| id | name | parent_id |
+|---|---|---|
+| 1 | Dashrath | NULL |
+| 2 | Ram | 1 |
+| 3 | Luv | 2 |
+| 4 | Kush | 2 |
 
 ```sql
-SELECT s.son, ggf.father AS great_grandfather
-FROM family s
-LEFT JOIN family gf  ON s.father  = gf.son
-LEFT JOIN family ggf ON gf.father = ggf.son;
+-- Find each person's parent name
+SELECT c.name AS child, p.name AS parent
+FROM person c
+JOIN person p ON c.parent_id = p.id;
 ```
 
-| Grand-Son | Great-Grandfather |
+| child | parent |
 |---|---|
-| bheem | Raju |
-| Rahul | Kalia |
+| Ram | Dashrath |
+| Luv | Ram |
+| Kush | Ram |
 
-> 💡 **Pattern:** each extra "generation" you need to trace back requires **one more self-join**. This is a very common interview question testing self-joins + multi-level relationships.
+**Classic employee-manager version:**
+```sql
+SELECT e.ename AS employee, m.ename AS manager
+FROM emp e
+LEFT JOIN emp m ON e.mgr = m.empno;
+```
+
+Identical syntax in both Oracle and MySQL for a basic self join. For multi-level hierarchy traversal (all descendants at any depth), the two diverge:
+
+```sql
+-- Oracle hierarchical query
+SELECT name, LEVEL FROM person
+START WITH parent_id IS NULL
+CONNECT BY PRIOR id = parent_id;
+```
+
+🐬 **MySQL equivalent:** `CONNECT BY` **doesn't exist** in MySQL. Use a **recursive CTE** instead (MySQL 8.0+ only — no recursive CTE support before 8.0):
+```sql
+WITH RECURSIVE tree AS (
+    SELECT id, name, parent_id, 1 AS lvl FROM person WHERE parent_id IS NULL
+    UNION ALL
+    SELECT p.id, p.name, p.parent_id, t.lvl+1
+    FROM person p JOIN tree t ON p.parent_id = t.id
+)
+SELECT * FROM tree;
+```
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1073,213 +1037,55 @@ LEFT JOIN family ggf ON gf.father = ggf.son;
 
 ## 11. SQL Operators
 
-An **Operator** is a symbol/keyword used to perform an operation on one or more operands.
-
-### Types of Operators
-1. Arithmetic
-2. Logical
-3. Relational
-4. Concatenation
-5. Set
-6. Special
-7. Subquery
-
-### 1) Arithmetic Operator: `+ - * /`
-```sql
-SELECT ename, sal*12 AS annual_salary FROM emp;
-```
-
-### 2) Logical Operator: `AND`, `OR`, `NOT`
-```sql
-SELECT * FROM emp WHERE deptno=30 AND sal>1500;
-SELECT * FROM emp WHERE deptno=10 OR deptno=20;
-```
-
-### 3) Relational Operator: `= > < >= <= <> !=`
-Always returns TRUE or FALSE.
-```sql
-SELECT * FROM emp WHERE sal>2000;
-```
-
-### 4) Concatenation Operator: `||`
-```sql
-SELECT ename||' works as '||job FROM emp;
-```
-
-### 5) Set Operators
-
-Set operators are a type of operator used to **combine/merge the results of at least two different queries**.
-
-```
-Types: 1) UNION   2) UNION ALL   3) INTERSECT   4) MINUS
-```
-
-Both queries must have the **same number of columns, same datatypes, and same order of columns**.
-
-**Sample sets used below:**
-```text
-A = {1, 3, 4}        B = {2, 5, 3}
-```
-
-**1) `UNION`** — returns **all** values from Set 1 and Set 2, with **no duplicates**, and the resulting data is returned in **sorted order**.
-```sql
-SELECT deptno FROM emp
-UNION
-SELECT deptno FROM dept;
-```
-```text
-A UNION B = {1, 2, 3, 4, 5}
-```
-
-**2) `UNION ALL`** — returns **all** values from Set 1 **with** Set 2, **including duplicates**.
-```sql
-SELECT deptno FROM emp
-UNION ALL
-SELECT deptno FROM dept;
-```
-```text
-A UNION ALL B = {1, 3, 4, 2, 5, 3}
-```
-
-**3) `INTERSECT`** — returns only the **common values** present in **both** Set 1 and Set 2.
-```sql
-SELECT deptno FROM emp
-INTERSECT
-SELECT deptno FROM dept;
-```
-```text
-A INTERSECT B = {3}
-```
-
-**4) `MINUS`** — returns values from Set 1 which are **not present** in Set 2. (Order matters! `A MINUS B` ≠ `B MINUS A`.)
-```sql
-SELECT deptno FROM dept
-MINUS
-SELECT deptno FROM emp;
-```
-```text
-A MINUS B = {1, 4}
-B MINUS A = {2, 5}
-```
-
-### Practice Questions — Set Operators
-
-Using sample `Emp` and `Student` tables where both have a `name`/`ename` column:
-
-```sql
--- Q1. Display all ENAME with STUDENT NAME (combined, no duplicates)
-SELECT ename FROM emp
-UNION
-SELECT name FROM student;
-
--- Q2. Display all STUDENT NAME with ENAME
-SELECT name FROM student
-UNION
-SELECT ename FROM emp;
-
--- Q3. Display ENAME which is NOT present in STUDENT
-SELECT ename FROM emp
-MINUS
-SELECT name FROM student;
-
--- Q4. Display STUDENT NAME which is NOT present in ENAME
-SELECT name FROM student
-MINUS
-SELECT ename FROM emp;
-
--- Q5. Find common names present in both ENAME & STUDENT NAME
-SELECT ename FROM emp
-INTERSECT
-SELECT name FROM student;
-
--- Q6. Find ENAME and STUDENT NAME with no duplicates (sorted order)
-SELECT ename FROM emp
-UNION
-SELECT name FROM student;
-```
-
-> 💡 **Interview tip:** `UNION` does an implicit sort + de-duplication pass internally, so it's **slower** than `UNION ALL` on large datasets. If you know there are no duplicates (or don't care about them), always prefer `UNION ALL` for performance.
-
-### 6) Special Operators
-
-| Operator | Purpose | Example |
-|---|---|---|
-| `IN` | Match any value in a list | `WHERE deptno IN(10,20,30)` |
-| `NOT IN` | Exclude values in a list | `WHERE deptno NOT IN(10,20)` |
-| `LIKE` | Pattern matching (`%` any chars, `_` one char) | `WHERE ename LIKE 'S%'` |
-| `NOT LIKE` | Exclude matching pattern | `WHERE ename NOT LIKE 'S%'` |
-| `BETWEEN` | Range (inclusive) | `WHERE sal BETWEEN 1000 AND 3000` |
-| `NOT BETWEEN` | Outside range | `WHERE sal NOT BETWEEN 1000 AND 3000` |
-| `IS NULL` | Check for NULL | `WHERE comm IS NULL` |
-| `IS NOT NULL` | Check for non-NULL | `WHERE comm IS NOT NULL` |
-
-**LIKE wildcard examples:**
-- Starts with S: `'S%'` &nbsp;|&nbsp; Ends with H: `'%H'` &nbsp;|&nbsp; Contains A: `'%A%'`
-- Exactly 5 characters: `'_____'` &nbsp;|&nbsp; Starts M ends R: `'M%R'`
-
-### 7) Subquery Operators
-
-**Subquery Operators** are special keywords that allow the **outer query** to connect with the result of an **inner query** — used for complex retrieval and filtering.
-
-| Operator | Meaning |
-|---|---|
-| `IN` | Matches any value returned by subquery |
-| `ANY` | TRUE if condition satisfied by **at least one** value |
-| `ALL` | TRUE only if condition satisfied by **every** value |
-| `EXISTS` | TRUE if subquery returns **at least one row** |
-| `NOT EXISTS` | TRUE if subquery returns **no rows** |
-
-#### `ANY` — `(= any, > any, < any)`
-Used **with comparison operators**. The condition is **TRUE if the comparison is true for at least one** value returned by the inner query.
-
-```sql
-SELECT ename, sal FROM emp
-WHERE sal > ANY (SELECT sal FROM emp WHERE ename IN ('Smith', 'Turner'));
-```
-
-#### `ALL` — `(= all, > all, < all)`
-Used **with comparison operators**. The condition is **TRUE only if the comparison is true for ALL the values** returned by the inner query.
-
-```sql
-SELECT ename, sal FROM emp
-WHERE sal > ALL (SELECT sal FROM emp WHERE deptno = 30);
-```
-
-> 🧠 **Memory trick:** `ANY` = "at least one match is enough" (easier to satisfy). `ALL` = "every single value must satisfy it" (harder to satisfy, more restrictive).
-
-#### `EXISTS` / `NOT EXISTS`
-Used to **check the existence of rows** in a subquery's result set.
-- If the subquery returns **one or more rows** → `EXISTS` is TRUE.
-- If it returns **no rows** → `EXISTS` is FALSE (and `NOT EXISTS` becomes TRUE).
-
-```sql
-SELECT * FROM tab1
-WHERE EXISTS (
-    SELECT col FROM tab2 WHERE t1.col = t2.col
-);
-```
-
-```sql
-SELECT * FROM emp e
-WHERE EXISTS (
-    SELECT deptno FROM dept d
-    WHERE e.deptno = d.deptno AND loc = 'DALLAS'
-);
-```
-
-> 💡 `EXISTS` is generally **more efficient than `IN`**, because it **stops processing as soon as it finds a single matching row** — it doesn't need to build/compare against the entire result set the way `IN` does. `EXISTS` is mostly used for **Correlated Subqueries** (see [Section 13](#13-subqueries-correlated-subqueries--rownum)).
-
-### Operator Summary
-
-| Operator Type | Operators |
+| Category | Operators |
 |---|---|
 | Arithmetic | `+ - * /` |
+| Comparison | `= != <> < > <= >=` |
 | Logical | `AND OR NOT` |
-| Relational | `= > < >= <= <> !=` |
-| Concatenation | `\|\|` |
-| Set | `UNION UNION ALL INTERSECT MINUS` |
-| Special | `IN NOT IN LIKE NOT LIKE BETWEEN NOT BETWEEN IS NULL IS NOT NULL` |
-| Subquery | `IN ANY ALL EXISTS NOT EXISTS` |
+| Range | `BETWEEN...AND` |
+| Membership | `IN`, `NOT IN` |
+| Pattern Matching | `LIKE` |
+| NULL Check | `IS NULL`, `IS NOT NULL` |
+| Set | `UNION`, `UNION ALL`, `INTERSECT`, `MINUS` (Oracle) |
+
+```sql
+SELECT * FROM emp WHERE sal BETWEEN 2000 AND 5000;
+SELECT * FROM emp WHERE deptno IN (10,20,30);
+SELECT * FROM emp WHERE ename LIKE 'S%';      -- starts with S
+SELECT * FROM emp WHERE ename LIKE '%TH';     -- ends with TH
+SELECT * FROM emp WHERE ename LIKE '_A%';     -- 2nd letter is A
+SELECT * FROM emp WHERE comm IS NULL;
+```
+
+**LIKE wildcards:** `%` = any number of characters, `_` = exactly one character. Same in MySQL.
+
+🐬 **MySQL note:** `LIKE` is case-**insensitive** by default in MySQL (depends on the column's collation, but most default collations are case-insensitive), while Oracle's `LIKE` is case-**sensitive** by default. Worth testing/mentioning if asked.
+
+### Set Operators
+```sql
+SELECT deptno FROM emp
+UNION                 -- combines + removes duplicates
+SELECT deptno FROM dept;
+
+SELECT deptno FROM emp
+UNION ALL              -- combines, keeps duplicates
+SELECT deptno FROM dept;
+
+SELECT empno FROM emp
+INTERSECT              -- common rows only
+SELECT empno FROM emp_backup;
+
+SELECT empno FROM emp
+MINUS                   -- rows in first, not in second (Oracle only)
+SELECT empno FROM emp_backup;
+```
+
+🐬 **MySQL note:** `UNION`, `UNION ALL` supported everywhere. `INTERSECT` supported only from **MySQL 8.0.31+**. `MINUS` **doesn't exist** in MySQL — use `EXCEPT` instead (also 8.0.31+), or simulate with `LEFT JOIN ... IS NULL` on older versions.
+
+| Oracle | 🐬 MySQL |
+|---|---|
+| `MINUS` | `EXCEPT` (8.0.31+) |
+| `INTERSECT` | `INTERSECT` (8.0.31+ only — errors on older versions) |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1287,71 +1093,37 @@ WHERE EXISTS (
 
 ## 12. CASE Expression
 
-`CASE` is a SQL expression used to perform **conditional logic** directly inside a `SELECT` statement — similar to `if-else-if` in a programming language.
-
-### Syntax
-
-```sql
-CASE
-    WHEN cond1 THEN val1
-    WHEN cond2 THEN val2
-    ...
-    ELSE valn
-END
-```
-- Conditions are checked **top to bottom**, and the **first match wins** (just like an `else-if` ladder).
-- `ELSE` is optional — if omitted and no condition matches, the result is `NULL`.
-
-### Example
+`CASE` provides conditional (if-else style) logic inside SQL.
 
 ```sql
 SELECT ename, sal,
-CASE
-    WHEN sal >= 2000 THEN 'HIGH'
-    WHEN sal > 0 AND sal < 2000 THEN 'LOW'
-END AS status
+  CASE
+    WHEN sal >= 5000 THEN 'HIGH'
+    WHEN sal >= 2000 THEN 'MEDIUM'
+    ELSE 'LOW'
+  END AS sal_grade
 FROM emp;
 ```
 
-| ename | sal | status |
-|---|---|---|
-| SMITH | 800 | LOW |
-| ALLEN | 1600 | LOW |
-| JONES | 2975 | HIGH |
-| KING | 5000 | HIGH |
-
-### More Practice Examples
-
+**Simple CASE (matches exact values):**
 ```sql
--- Categorize employees by salary band
-SELECT ename, sal,
-CASE
-    WHEN sal >= 3000 THEN 'Top Earner'
-    WHEN sal >= 1500 THEN 'Mid Earner'
-    ELSE 'Entry Level'
-END AS salary_band
-FROM emp;
-```
-
-```sql
--- Grade employees based on department
 SELECT ename, deptno,
-CASE deptno
-    WHEN 10 THEN 'Accounting'
-    WHEN 20 THEN 'Research'
-    WHEN 30 THEN 'Sales'
-    ELSE 'Unknown'
-END AS dept_name
+  CASE deptno
+    WHEN 10 THEN 'ACCOUNTING'
+    WHEN 20 THEN 'RESEARCH'
+    WHEN 30 THEN 'SALES'
+    ELSE 'UNKNOWN'
+  END AS dept_name
 FROM emp;
 ```
-> 📝 Note: `CASE deptno WHEN 10 THEN ...` (the "simple CASE" form) only checks for **equality** — for range conditions (`>=`, `BETWEEN`, etc.), use the **searched CASE** form shown in the first example (`CASE WHEN cond THEN ...`).
 
-### ⚠️ Points to Keep in Mind — CASE Expression
+**DECODE (Oracle-only shorthand for simple CASE):**
+```sql
+SELECT ename, DECODE(deptno,10,'ACCOUNTING',20,'RESEARCH',30,'SALES','UNKNOWN') AS dept_name
+FROM emp;
+```
 
-- `CASE` can be used inside `SELECT`, `WHERE`, `ORDER BY`, and even `GROUP BY`.
-- Conditions are evaluated **top to bottom** — order your conditions from most-specific to least-specific, just like an `else-if` ladder.
-- Without an `ELSE`, unmatched rows return `NULL` — always add an `ELSE` if you want a fallback value instead of NULL.
-- `CASE` is a great **alternative to DECODE()** (Oracle's older, less flexible equivalent) since it supports full comparison operators, not just equality.
+🐬 **MySQL:** `CASE` syntax is fully identical (it's ANSI standard). `DECODE` **doesn't exist** in MySQL — always use `CASE` there. Also note MySQL has its own unrelated function called `IF(condition, val_if_true, val_if_false)` as a quick shorthand for simple two-way conditionals, which Oracle doesn't have (Oracle uses `DECODE` or `CASE` for that instead).
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1360,163 +1132,72 @@ FROM emp;
 ## 13. Subqueries, Correlated Subqueries & ROWNUM
 
 ### Subquery
-A query written **inside another SQL query** — also called an Inner Query or Nested Query. The inner query executes first; its result feeds the outer query.
+A query nested inside another query. Executes first, its result is used by the outer query.
 
-**Used when:**
-- Required value isn't known in advance.
-- Data depends on another query's result.
-- Comparing data against values from another query.
-- Solving complex problems step by step.
-
+**Single-row subquery:**
 ```sql
-SELECT * FROM emp WHERE sal = (SELECT MAX(sal) FROM emp);
+SELECT ename, sal FROM emp WHERE sal > (SELECT AVG(sal) FROM emp);
 ```
 
-### Types of Subqueries
-
-**1) Single Row Subquery** — returns only **one value**. Uses `= > < >= <= <>`.
+**Multi-row subquery (use IN, ANY, ALL):**
 ```sql
-SELECT * FROM emp WHERE sal = (SELECT MAX(sal) FROM emp);
-SELECT * FROM emp WHERE deptno = (SELECT deptno FROM dept WHERE dname='SALES');
+SELECT ename FROM emp WHERE deptno IN (SELECT deptno FROM dept WHERE loc='CHICAGO');
+SELECT ename FROM emp WHERE sal > ANY (SELECT sal FROM emp WHERE deptno=30);  -- greater than at least one
+SELECT ename FROM emp WHERE sal > ALL (SELECT sal FROM emp WHERE deptno=30); -- greater than all
 ```
 
-**2) Multi Row Subquery** — returns **more than one row**. Uses `IN ANY ALL EXISTS`.
+**Subquery in FROM (inline view):**
 ```sql
-SELECT * FROM emp WHERE deptno IN (SELECT deptno FROM dept);
-SELECT * FROM emp WHERE sal > ANY (SELECT sal FROM emp WHERE deptno=30);
-SELECT * FROM emp WHERE sal > ALL (SELECT sal FROM emp WHERE deptno=30);
+SELECT deptno, avg_sal FROM (
+    SELECT deptno, AVG(sal) AS avg_sal FROM emp GROUP BY deptno
+) WHERE avg_sal > 3000;
 ```
 
-**3) Nested Subquery** — a subquery **inside another subquery** (2+ levels). Innermost query executes first.
+🐬 **MySQL note:** All subquery forms above (single-row, IN/ANY/ALL, inline view) work identically in MySQL.
+
+### Correlated Subquery
+The inner query **references a column from the outer query** — executes once per outer row (unlike a normal subquery, which runs once total).
+
 ```sql
-SELECT * FROM emp WHERE deptno = (
-    SELECT deptno FROM dept WHERE loc = (
-        SELECT loc FROM dept WHERE dname='ACCOUNTING'
-    )
+-- Employees earning more than the average of their own department
+SELECT e.ename, e.sal, e.deptno
+FROM emp e
+WHERE e.sal > (
+    SELECT AVG(sal) FROM emp WHERE deptno = e.deptno
 );
+
+-- EXISTS with correlated subquery
+SELECT d.dname FROM dept d
+WHERE EXISTS (SELECT 1 FROM emp e WHERE e.deptno = d.deptno);
 ```
 
-**4) Inline Subquery (Inline View)** — a subquery written in the **FROM** clause; behaves like a temporary table. Commonly used with `ROWNUM` for Top-N, Bottom-N, Nth salary, pagination, and ranking.
-```sql
--- Third record
-SELECT * FROM (SELECT emp.*, ROWNUM r FROM emp) WHERE r=3;
-
--- Top 5 highest salaries
-SELECT * FROM (SELECT * FROM emp ORDER BY sal DESC) WHERE ROWNUM<=5;
-
--- Second highest salary
-SELECT * FROM (
-    SELECT e.*, ROWNUM r FROM (SELECT * FROM emp ORDER BY sal DESC) e
-) WHERE r=2;
-```
-
-**5) Correlated Subquery** — depends on the outer query; executed **once per row** of the outer query.
-
-> **Definition:** Writing the outer query's column *inside* the inner query is what makes it a **correlated subquery**.
-> - The inner query **depends on** the outer query.
-> - The inner query references a **table or column from the outer (parent) query**.
-
-```sql
--- Employees earning more than their department average
-SELECT * FROM emp e WHERE sal > (SELECT AVG(sal) FROM emp WHERE deptno=e.deptno);
-
--- Highest paid employee in each department
-SELECT * FROM emp e WHERE sal = (SELECT MAX(sal) FROM emp WHERE deptno=e.deptno);
-```
-
-#### Correlated Subquery — Worked Examples
-
-**Example 1: Find employee details below the minimum salary of their department.**
-```sql
-SELECT * FROM emp e
-WHERE sal < (SELECT MIN(sal) FROM emp e1 WHERE e.job = e1.job);
-```
-*(Here we need to reference the outer query's job for this to work correctly.)*
-
-**Example 2: Find employee details where salary is greater than the department average.**
-```sql
-SELECT * FROM emp e
-WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.deptno = e1.deptno);
-```
-
-**Example 3: Find employee details where salary > average salary of the same job.**
-```sql
-SELECT * FROM emp e
-WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.job = e1.job);
-```
-
-**Example 4: Find employee details when salary < max salary of the same department.**
-```sql
-SELECT * FROM emp e
-WHERE e.sal < (SELECT MAX(sal) FROM emp e1 WHERE e.deptno = e1.deptno);
-```
-
-**Example 5: Find employee details when salary > average salary of the same job (variant using aliasing consistently).**
-```sql
-SELECT * FROM emp e
-WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.job = e1.job);
-```
-
-#### `EXISTS` with Correlated Subqueries
-
-```sql
-SELECT * FROM emp e
-WHERE EXISTS (
-    SELECT deptno FROM dept d
-    WHERE e.deptno = d.deptno AND d.loc = 'DALLAS'
-);
-```
-This checks, **row by row**, whether the current employee's department is located in Dallas — a textbook correlated subquery paired with `EXISTS`.
-
-### 🔗 Combining DENSE_RANK with Correlated-style Nth Value Questions
-
-These questions look like correlated subqueries but are more cleanly solved with `DENSE_RANK()` (see [Section 21](#21-ranking-functions--row_number-rank-dense_rank)):
-
-```sql
--- Q3. Find the 4th highest salary
-SELECT sal FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) dk FROM emp
-) WHERE dk = 4;
-
--- Q4. Find the 4th lowest salary
-SELECT sal FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) dk FROM emp
-) WHERE dk = 4;
-
--- Q5. Find the 2nd, 4th, and 5th highest salary
-SELECT sal FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) dk FROM emp
-) WHERE dk IN (2,4,5);
-```
-
-### ROWNUM
-A **Pseudo Column** in Oracle — not stored in the table. Oracle auto-assigns a row number to every returned row, starting from **1**.
-
-**Execution order:** `FROM → WHERE → ROWNUM assigned → SELECT → ORDER BY`
-> ⚠️ `ROWNUM` is assigned **before** `ORDER BY` — this is why Inline Views are needed to sort first, then apply `ROWNUM`.
-
-**Rules:**
-| Works ✅ | Does NOT work ❌ |
+| Subquery | Correlated Subquery |
 |---|---|
-| `WHERE rownum=1` | `WHERE rownum=2` |
-| `WHERE rownum<=5` | `WHERE rownum>5` |
-| `WHERE rownum<10` | — |
+| Runs once, independently | Runs once per outer row |
+| No reference to outer query | References outer query column |
+| Generally faster | Can be slower on large data |
+
+Identical behavior/syntax in MySQL.
+
+### ROWNUM (Oracle-only pseudo-column)
+Assigns a sequential number to rows **as they're returned** (before ORDER BY is applied logically).
 
 ```sql
-SELECT * FROM emp WHERE rownum=1;      -- first employee
-SELECT * FROM emp WHERE rownum<=5;     -- first 5 employees
-SELECT * FROM emp WHERE rownum=2;      -- ❌ No rows selected
+SELECT * FROM emp WHERE ROWNUM <= 5;          -- first 5 rows
+
+-- Top N by salary (must wrap in subquery — ROWNUM filters BEFORE ORDER BY)
+SELECT * FROM (
+    SELECT * FROM emp ORDER BY sal DESC
+) WHERE ROWNUM <= 3;
 ```
+> ⚠️ Classic trap: `SELECT * FROM emp WHERE ROWNUM > 1;` returns **zero rows** — ROWNUM is assigned incrementally starting at 1, so a condition like `> 1` never matches on the first evaluated row and the sequence can't restart.
 
-### ⚠️ Points to Keep in Mind — Correlated Subqueries
-
-- A subquery becomes **correlated** the moment it references a **column from the outer query** inside the inner query's `WHERE`.
-- A correlated subquery runs **once per row** of the outer query — this can be **slow on large tables**, since it's essentially a loop.
-- Non-correlated (regular) subqueries run **once total**, independent of the outer query.
-- `EXISTS`/`NOT EXISTS` are the most natural fit for correlated subqueries — they only need to know "does at least one row exist," so they can stop early.
-- Always double-check which alias belongs to the outer query vs the inner query — this is the #1 source of correlated subquery bugs (accidentally comparing a table to itself with no real correlation).
-
-> 📌 **See [Section 26](#26--decision-guide--when-to-use-what)** for a full decision guide on when to reach for a Correlated Subquery vs a JOIN vs a Window Function.
+🐬 **MySQL equivalent:** MySQL has **no ROWNUM at all** — this entire concept is Oracle-only. MySQL uses `LIMIT` (much simpler, no subquery-wrapping trap):
+```sql
+SELECT * FROM emp ORDER BY sal DESC LIMIT 3;
+SELECT * FROM emp LIMIT 5 OFFSET 10;   -- pagination (skip 10, take next 5)
+```
+> 💡 Note: Oracle 12c+ also added simpler pagination syntax as an alternative to ROWNUM: `SELECT * FROM emp ORDER BY sal DESC OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY;` — closer to MySQL's LIMIT/OFFSET, but ROWNUM is still commonly asked about in interviews.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1524,70 +1205,31 @@ SELECT * FROM emp WHERE rownum=2;      -- ❌ No rows selected
 
 ## 14. WHERE, GROUP BY, HAVING & ORDER BY
 
-### SQL Query Execution Order
-```text
+### Logical Order of Execution (important interview question!)
+```
 FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY
 ```
 
-### 1) WHERE Clause
-Filters rows **before grouping** — only rows satisfying the condition are returned.
-```sql
-SELECT * FROM emp WHERE deptno=10;
-SELECT * FROM emp WHERE hiredate>'01-JAN-82';
-SELECT * FROM emp WHERE comm IS NULL;
-```
-
-### 2) GROUP BY Clause
-Groups rows sharing the same value in one/more columns — used with aggregate functions (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`).
-```sql
-SELECT deptno, COUNT(*) FROM emp GROUP BY deptno;
-SELECT deptno, AVG(sal) FROM emp GROUP BY deptno;
-```
-**Rules:**
-- Executed **after** WHERE, **before** HAVING.
-- Every non-aggregate column in `SELECT` must be in `GROUP BY`.
-- Aggregate functions cannot be used directly inside `GROUP BY`.
-
-### 3) HAVING Clause
-Filters **groups** created by `GROUP BY` (WHERE filters rows, HAVING filters groups).
-
-| WHERE | HAVING |
-|---|---|
-| Filters rows | Filters groups |
-| Executed before GROUP BY | Executed after GROUP BY |
-| Cannot use aggregate functions | Aggregate functions commonly used |
+| Clause | Filters | Can use aggregate functions? |
+|---|---|---|
+| `WHERE` | Individual rows (before grouping) | ❌ No |
+| `GROUP BY` | Groups rows by column(s) | — |
+| `HAVING` | Groups (after aggregation) | ✅ Yes |
+| `ORDER BY` | Final sort of output | ✅ Yes |
 
 ```sql
-SELECT deptno, COUNT(*) FROM emp GROUP BY deptno HAVING COUNT(*)>3;
-SELECT deptno, AVG(sal) FROM emp GROUP BY deptno HAVING AVG(sal)>2000;
-
--- WHERE + GROUP BY + HAVING together
-SELECT deptno, COUNT(*) FROM emp
-WHERE job='MANAGER'
+-- Departments with more than 3 employees earning above 2000
+SELECT deptno, COUNT(*) AS emp_count
+FROM emp
+WHERE sal > 2000
 GROUP BY deptno
-HAVING COUNT(*)>1;
+HAVING COUNT(*) > 3
+ORDER BY emp_count DESC;
 ```
 
-### 4) ORDER BY Clause
-Sorts the result set — **Ascending (`ASC`, default)** or **Descending (`DESC`)**.
-```sql
-SELECT * FROM emp ORDER BY ename;
-SELECT * FROM emp ORDER BY sal DESC;
-SELECT * FROM emp ORDER BY deptno ASC, sal DESC;   -- multi-column sort
-```
-**Rules:**
-- Always the **last** clause in a `SELECT` statement.
-- `ASC` is default.
-- Multiple columns can each have their own sort direction.
+> 💡 **WHERE vs HAVING** — the #1 asked SQL question. `WHERE` filters rows *before* grouping and cannot use aggregate functions; `HAVING` filters *groups* after aggregation and can.
 
-### Clause Summary
-
-| Clause | Purpose |
-|---|---|
-| `WHERE` | Filter rows |
-| `GROUP BY` | Group similar rows |
-| `HAVING` | Filter grouped rows |
-| `ORDER BY` | Sort final output |
+🐬 **MySQL note:** Identical execution order and behavior. One MySQL-specific quirk: MySQL allows referencing a `SELECT`-clause **alias** inside `GROUP BY` and `HAVING` (e.g. `GROUP BY emp_count`), which Oracle does **not** allow in `HAVING` (Oracle requires the full expression or the actual column, not the alias, in most cases).
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1595,135 +1237,33 @@ SELECT * FROM emp ORDER BY deptno ASC, sal DESC;   -- multi-column sort
 
 ## 15. TCL – Transaction Control Language
 
-**TCL** is a type of SQL language used to **control the transactions** done on the database.
-
-TCL consists of: **`COMMIT`**, **`ROLLBACK`**, **`SAVEPOINT`**
-
-### 1) COMMIT
-`COMMIT` is a TCL command used to **save data changes permanently**.
-```sql
-COMMIT;
-```
-
-### 2) ROLLBACK
-`ROLLBACK` is a TCL command used to **undo transactions** back to the last `COMMIT` or a specific `SAVEPOINT` address.
-```sql
-ROLLBACK;                 -- undo everything since last COMMIT
-ROLLBACK TO savepointname; -- undo everything since that SAVEPOINT
-```
-
-### 3) SAVEPOINT
-`SAVEPOINT` is a **temporary memory address** used to mark a point in a transaction — you can `ROLLBACK` to that exact point later.
-```sql
-SAVEPOINT savepointname;
-```
-
-### Example 1 — Basic Commit & Rollback
-
-```sql
-CREATE TABLE stud (sid NUMBER PRIMARY KEY, name VARCHAR2(10));
-
-INSERT INTO stud VALUES (101, 'ramesh');
-INSERT INTO stud VALUES (102, 'ramya');
-COMMIT;
--- Commit complete.
-
-SELECT * FROM stud;
-```
-| sid | name |
-|---|---|
-| 101 | ramesh |
-| 102 | ramya |
-
-```sql
-INSERT INTO stud VALUES (103, 'mahesh');
-INSERT INTO stud VALUES (104, 'manisha');
-
-SELECT * FROM stud;
-```
-| sid | name |
-|---|---|
-| 101 | ramesh |
-| 102 | ramya |
-| 103 | mahesh |
-| 104 | manisha |
-
-```sql
-ROLLBACK;
--- Rollback complete.
-
-SELECT * FROM stud;
-```
-| sid | name |
-|---|---|
-| 101 | ramesh |
-| 102 | ramya |
-
-> The two uncommitted inserts (103, 104) disappeared because `ROLLBACK` undid everything since the last `COMMIT`.
-
-### Example 2 — Multiple Savepoints
-
-```sql
-INSERT INTO stud VALUES (103, 'mahesh');
-SAVEPOINT s1;
--- Savepoint created.
-
-INSERT INTO stud VALUES (104, 'manisha');
-SAVEPOINT s2;
-
-INSERT INTO stud VALUES (105, 'suresh');
-SAVEPOINT s3;
-
-INSERT INTO stud VALUES (106, 'sunitha');
-SAVEPOINT s4;
-
-SELECT * FROM stud;
-```
-| sid | name |
-|---|---|
-| 101 | ramesh |
-| 102 | ramya |
-| 103 | mahesh |
-| 104 | manisha |
-| 105 | suresh |
-| 106 | sunitha |
-
-```sql
--- Roll back everything after savepoint s3 (undoes s4's insert only)
-ROLLBACK TO s3;
-
-SELECT * FROM stud;
-```
-| sid | name |
-|---|---|
-| 101 | ramesh |
-| 102 | ramya |
-| 103 | mahesh |
-| 104 | manisha |
-| 105 | suresh |
-
-```sql
--- Roll back everything after savepoint s2 (undoes s3's insert too)
-ROLLBACK TO s2;
-
-SELECT * FROM stud;
-```
-| sid | name |
-|---|---|
-| 101 | ramesh |
-| 102 | ramya |
-| 103 | mahesh |
-| 104 | manisha |
-
-> 💡 `ROLLBACK TO <savepoint>` undoes everything done **after** that savepoint, but keeps everything done **up to and including** it.
-
-### TCL Command Summary
+Manages **transactions** — a transaction is a set of operations treated as a single unit (all succeed, or all fail).
 
 | Command | Purpose |
 |---|---|
-| `COMMIT` | Permanently save all changes |
-| `ROLLBACK` | Undo changes since last COMMIT/SAVEPOINT |
-| `SAVEPOINT` | Mark a point to roll back to later |
+| `COMMIT` | Permanently saves changes made in the current transaction |
+| `ROLLBACK` | Undoes changes made in the current transaction |
+| `SAVEPOINT` | Sets a named point within a transaction to roll back to |
+
+```sql
+UPDATE emp SET sal = sal + 500 WHERE deptno = 10;
+SAVEPOINT sp1;
+
+DELETE FROM emp WHERE deptno = 20;
+ROLLBACK TO sp1;   -- undoes the DELETE, keeps the UPDATE
+
+COMMIT;            -- permanently saves the UPDATE
+```
+
+### ACID Properties (transaction guarantees)
+| Property | Meaning |
+|---|---|
+| **Atomicity** | Transaction is all-or-nothing |
+| **Consistency** | DB moves from one valid state to another |
+| **Isolation** | Concurrent transactions don't interfere with each other |
+| **Durability** | Once committed, changes persist even after a crash |
+
+🐬 **MySQL note:** TCL syntax (`COMMIT`, `ROLLBACK`, `SAVEPOINT`, `ROLLBACK TO`) works the same way — **but only on InnoDB** (transaction-safe) tables. The older **MyISAM** engine does not support transactions/rollback at all (every statement auto-commits immediately, no undo). Also, by default MySQL runs in `autocommit=1` mode (every individual statement auto-commits unless you explicitly `START TRANSACTION`), whereas Oracle does **not** auto-commit by default — a very commonly asked difference.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1731,83 +1271,25 @@ SELECT * FROM stud;
 
 ## 16. DCL – Data Control Language
 
-**DCL** is a type of SQL language used to **control the flow of data** or **grant/manage permissions**.
-
-DCL has two commands: **`GRANT`** and **`REVOKE`**
-
-### 1) GRANT
-Used to **give permission** to a user.
-```sql
-GRANT sql-statement ON tabname TO username;
-```
-```sql
-GRANT SELECT ON emp TO hr;         -- read-only permission
-GRANT UPDATE ON emp TO hr;         -- update permission
-GRANT ALL ON emp TO hr;            -- all permissions
-```
-
-### 2) REVOKE
-Used to **take back** a permission that was granted.
-```sql
-REVOKE sql-statement ON tabname FROM username;
-```
-
-### Practical Walkthrough
-
-```sql
--- Logged in as SCOTT
-SHOW USER;
--- USER is "SCOTT"
-
--- Grant SELECT permission on emp to hr
-GRANT SELECT ON emp TO hr;
--- Grant succeeded.
-
--- Connect as hr
-CONN hr/tiger
--- Connected.
-
--- hr can't query "emp" directly — must qualify with owner
-SELECT * FROM emp;
-```
-```text
-ORA-00942: table or view does not exist
-```
-```sql
--- Must reference the owning schema
-SELECT * FROM scott.emp;
--- 14 rows selected
-```
-```sql
--- hr only has SELECT, not UPDATE — this fails
-UPDATE scott.emp SET ename = 'KING' WHERE empno = 7839;
-```
-```text
--- No UPDATE permission granted yet
-```
-```sql
--- Back on SCOTT's session, grant UPDATE too
-CONN scott/tiger
-GRANT ALL ON emp TO hr;
--- Grant succeeded.
-
--- Back on hr's session
-CONN hr/tiger
-UPDATE scott.emp SET ename = 'KING' WHERE empno = 7839;
--- 1 row updated.
-
-SELECT * FROM scott.emp;
--- 14 rows selected (with the update reflected)
-```
-
-### DCL Command Summary
+Controls **access/permissions** on database objects.
 
 | Command | Purpose |
 |---|---|
-| `GRANT` | Give a permission to a user |
-| `REVOKE` | Take back a previously granted permission |
+| `GRANT` | Gives privileges to a user |
+| `REVOKE` | Removes privileges from a user |
 
-> 💡 A granted user must reference another user's table using `schema.tablename` syntax (e.g. `scott.emp`) unless a synonym is created.
+```sql
+GRANT SELECT, INSERT ON emp TO ramesh;
+GRANT ALL PRIVILEGES ON emp TO ramesh;
+REVOKE INSERT ON emp FROM ramesh;
+```
+
+🐬 **MySQL:** Syntax is nearly identical, but MySQL requires specifying the **host** as part of the username, and needs `FLUSH PRIVILEGES;` after manual grant-table edits (not needed after standard `GRANT`/`REVOKE` statements, but commonly run as a safety habit):
+```sql
+GRANT SELECT, INSERT ON db1.emp TO 'ramesh'@'localhost';
+REVOKE INSERT ON db1.emp FROM 'ramesh'@'localhost';
+FLUSH PRIVILEGES;
+```
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1815,77 +1297,57 @@ SELECT * FROM scott.emp;
 
 ## 17. Copying Tables (CTAS) & Creating New Users
 
-### CTAS — Create Table As Select
+### CTAS – Create Table As Select
+Creates a new table using the structure **and data** of a query result.
+```sql
+CREATE TABLE emp_backup AS SELECT * FROM emp;
+CREATE TABLE clerks AS SELECT * FROM emp WHERE job='CLERK';
 
-**Copy of a table WITH records:**
-```sql
-CREATE TABLE tabn AS (SELECT stmt);
+-- Structure only, no data
+CREATE TABLE emp_empty AS SELECT * FROM emp WHERE 1=2;
 ```
-```sql
-CREATE TABLE empc AS (SELECT * FROM emp);
-```
+> Constraints (PK, FK, checks) are **not** copied by CTAS — only NOT NULL is preserved. Indexes must be recreated manually.
 
-**Copy of a table WITHOUT records (structure only):**
-```sql
-CREATE TABLE tabn AS (SELECT * FROM tabn WHERE false-condition);
-```
-```sql
-CREATE TABLE empnorec AS (SELECT * FROM emp WHERE 1=2);
-```
-> The condition `1=2` is always **FALSE**, so **no records** are copied — only the table **structure** is created.
+🐬 **MySQL:** CTAS syntax identical — `CREATE TABLE ... AS SELECT ...` works the same way and has the same constraint-copying limitation.
 
-### Creating a New User (3 Steps)
-
-**Step 1 — Connect to the SYSTEM account**
+### Creating New Users (Oracle)
 ```sql
-CONN system
--- password: tiger
+CREATE USER ramesh IDENTIFIED BY password123;
+GRANT CONNECT, RESOURCE TO ramesh;
+ALTER USER ramesh ACCOUNT UNLOCK;
 ```
 
-**Step 2 — Create the user**
+🐬 **MySQL equivalent:**
 ```sql
-CREATE USER username IDENTIFIED BY pwd;
+CREATE USER 'ramesh'@'localhost' IDENTIFIED BY 'password123';
+GRANT ALL PRIVILEGES ON db1.* TO 'ramesh'@'localhost';
+FLUSH PRIVILEGES;
 ```
-```sql
-CREATE USER sourabh IDENTIFIED BY soura;
-```
-
-**Step 3 — Grant permissions**
-```sql
-GRANT CONNECT, RESOURCE TO username;
-```
-```sql
-GRANT CONNECT, RESOURCE TO sourabh;
-```
-
-| Step | Command |
-|---|---|
-| 1 | `CONN system` |
-| 2 | `CREATE USER username IDENTIFIED BY pwd;` |
-| 3 | `GRANT CONNECT, RESOURCE TO username;` |
 
 [⬆ Back to top](#-table-of-contents)
 
 ---
 
-## 18. SQL\*Plus Commands
+## 18. SQL*Plus Commands (Oracle client-only, not SQL itself)
 
-**Login example used in class:**
-- username: `hr`
-- password: `tiger`
+| Command | Purpose |
+|---|---|
+| `DESC tabname` | Describes table structure (columns, types, nullability) |
+| `SET LINESIZE n` | Sets output line width |
+| `SET PAGESIZE n` | Rows displayed per page |
+| `SPOOL filename` | Saves query output to a file |
+| `SPOOL OFF` | Stops spooling |
+| `/` | Re-runs the last SQL command |
+| `SHOW USER` | Displays current logged-in user |
 
-| # | Command | Purpose |
-|---|---|---|
-| 1 | `show user` | Display current username |
-| 2 | `show pagesize` | Display page size |
-| 3 | `show linesize` | Display line size |
-| 4 | `select * from tab;` | Display all table names |
-| 5 | `select * from dept;` | Display all details/data of table `dept` |
-| 6 | `desc dept;` | Describe table `dept` (column name & datatype) |
-| 7 | `set pagesize 100 linesize 100` | Set page size & line size |
-| 8 | `cl scr` | Clear screen |
-| 9 | `exit` | Exit SQL*Plus (shortcut: `Ctrl+Z`) |
-| 10 | `conn` | Connect as another user (enter username or username/password) |
+```sql
+DESC emp;
+SPOOL output.txt;
+SELECT * FROM emp;
+SPOOL OFF;
+```
+
+🐬 **MySQL equivalent:** `DESCRIBE tabname;` or `SHOW COLUMNS FROM tabname;` for structure (both work; `DESC` shorthand also works in the MySQL CLI). MySQL's CLI has no SPOOL command — use `mysql -e "query" > file.txt` from the shell instead, or `SELECT ... INTO OUTFILE 'path'` inside a query. `LINESIZE`/`PAGESIZE` are Oracle-only formatting settings with no MySQL CLI equivalent.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -1893,225 +1355,44 @@ GRANT CONNECT, RESOURCE TO sourabh;
 
 ## 19. Views & Materialized Views
 
-### What is a View
-A **View** is a **virtual table** built on top of a `SELECT` query. It has **no physical existence** of its own — it doesn't store any data.
+### View
+A **virtual table** based on a SQL query — doesn't store data itself, just the query definition. Data is fetched live from underlying table(s) each time it's queried.
 
-- It is a **logical structure** used to represent the result of one or more base tables (often used to abstract away complex joins).
-- Used for **abstraction**: hiding the internal complexity/implementation of a query, and exposing only the required functionality — the person querying the view doesn't need to know the internal joins/logic behind it.
-- Used to achieve **reusability** — write the complex query once as a view, then simply `SELECT * FROM view_name` afterwards instead of rewriting the whole join/query every time.
-- A view does **not require memory** to store data (it stores only the *query definition*, not the *result*).
-
-### Types of Views
-
-**1) Simple View** — built on a **single query with no joins/functions/subqueries** (usually from a single table).
 ```sql
-CREATE VIEW empsel AS
-SELECT ename, sal FROM emp;
+CREATE VIEW emp_view AS
+SELECT empno, ename, sal FROM emp WHERE deptno = 10;
+
+SELECT * FROM emp_view;
+
+CREATE OR REPLACE VIEW emp_view AS
+SELECT empno, ename, sal, deptno FROM emp WHERE deptno = 10;
+
+DROP VIEW emp_view;
 ```
 
-**2) Complex View** — built using a **complex query**, involving **joins, subqueries, or functions**.
+✅ **Advantages:** Simplifies complex queries, adds a security layer (hide sensitive columns), provides logical data independence.
+❌ **Limitation:** Views with joins/aggregates/DISTINCT are often **not updatable** (can't INSERT/UPDATE/DELETE through them).
+
+🐬 **MySQL:** `CREATE VIEW`, `CREATE OR REPLACE VIEW`, `DROP VIEW` all work identically.
+
+### Materialized View
+Like a view, but **physically stores** the query result (a snapshot). Needs manual/scheduled refresh to stay current — much faster to query since data doesn't need to be recomputed each time.
+
 ```sql
-CREATE VIEW emp_loc AS
-SELECT e.ename, d.loc FROM emp e, dept d WHERE e.deptno = d.deptno;
+CREATE MATERIALIZED VIEW mv_emp_summary
+AS SELECT deptno, SUM(sal) AS total_sal FROM emp GROUP BY deptno;
+
+-- Refresh manually
+EXEC DBMS_MVIEW.REFRESH('mv_emp_summary');
 ```
 
-| Simple View | Complex View |
+| View | Materialized View |
 |---|---|
-| Single table | Multiple tables |
-| No joins/functions/subqueries | Joins, subqueries, group functions allowed |
-| Usually updatable (INSERT/UPDATE/DELETE work through it) | Often NOT directly updatable |
+| Virtual, no storage | Physical, stores data |
+| Always up-to-date | Needs refresh |
+| Slower for complex queries | Faster (pre-computed) |
 
-### View Syntax
-
-```sql
-CREATE VIEW v_name AS
-SELECT stmt;
-```
-
-```sql
--- Simple view
-CREATE VIEW empsel AS
-SELECT ename, sal FROM emp;
-SELECT * FROM empsel;
-
--- Complex view (join)
-CREATE VIEW emp_loc AS
-SELECT e.ename, d.loc FROM emp e, dept d WHERE e.deptno = d.deptno;
-SELECT * FROM emp_loc;
-```
-
-### Granting Permission to Create Views
-
-Creating a view requires special system-level permission — a regular user can't create views out of the box.
-```sql
--- Connect as system (admin of db, all permissions)
-CONN system
-
--- Grant the permission
-GRANT CREATE VIEW TO username;
-```
-```sql
-GRANT CREATE VIEW TO scott;
-```
-
-### What is a Materialized View
-
-A **Materialized View** (often shortened as **mview**) **does have a physical existence**.
-- It **is** a real database object.
-- It **requires memory**, because it actually **stores data** on disk.
-- It's a physical DB object that **precomputes and saves the result of a query into an actual table**.
-- It stores **both** the query definition **and** the actual data (a real snapshot of the result), unlike a normal view which stores only the query.
-
-### Materialized View Syntax & Example
-
-```sql
-CREATE MATERIALIZED VIEW v_name AS
-SELECT stmt;
-```
-
-**Granting permission (system-level, same idea as views):**
-```sql
-CONN system
-GRANT CREATE MATERIALIZED VIEW TO username;
-```
-```sql
-GRANT CREATE MATERIALIZED VIEW TO scott;
-```
-
-**Example:**
-```sql
-CREATE MATERIALIZED VIEW max_job AS
-SELECT MAX(sal) AS msal, job FROM emp
-GROUP BY job;
-
-SELECT * FROM max_job;
-```
-
-### View vs Materialized View
-
-| | **View** | **Materialized View** |
-|---|---|---|
-| Physical existence | ❌ No — virtual only | ✅ Yes — a real, physical DB object |
-| What it stores | Only the **query** | The query **AND** the actual **snapshot data** |
-| Data source on each run | Always pulled **live** from the base table | Pulled from the **stored snapshot**, not the base table (except the very first time) |
-| Speed | Slower — re-runs the underlying query every single time | Faster — data is already precomputed and sitting there |
-| Reflects base table changes? | ✅ **Instantly** — always shows current base table data | ❌ **Not automatically** — needs a manual/scheduled refresh |
-| Memory usage | Minimal (just stores the query text) | Higher (stores actual duplicate data) |
-
-**Why this trade-off exists:**
-
-*View:*
-```text
-exec view → goes to base table (1000 records) → filters down to 10 matched → returned
-```
-Every execution re-scans/re-joins the base table live. This means it's always accurate, but slower — especially for expensive joins/aggregations run repeatedly.
-
-*Materialized View:*
-```text
-First time:  mat view → base table (1000 records) → stored as 10 matched records in the mview's own storage (db object)
-Every time after: mat view → reads directly from its own stored 10 records (fast, but possibly stale)
-```
-Since it already has the filtered/aggregated result sitting in its own storage, it's much faster to read — but it won't automatically reflect new changes made to the base table.
-
-### Refreshing a Materialized View
-
-Because a materialized view's stored data does **not** automatically update when the base table changes, you must manually (or via a schedule) **refresh** it:
-```sql
-EXEC DBMS_MVIEW.REFRESH('mview_name');
-```
-Until you run this, the materialized view keeps showing **old/stale data**, even though the base table has already changed.
-
-### Practice Questions — Views & Mviews
-
-**Q1. Create a view to display employee name and manager name.**
-```sql
-CREATE VIEW manager_view AS
-(SELECT e.ename AS emp, m.ename AS manager
- FROM emp e, emp m
- WHERE e.mgr = m.empno);
-```
-*(This is a self-join wrapped inside a view — see [Section 10](#10-self-join--family-tree-example).)*
-
-**Q2. Create a materialized view to display employee name, salary, salary grade, and location.**
-```sql
-CREATE MATERIALIZED VIEW empsalloc AS
-(SELECT e.ename, e.sal, d.loc, s.grade
- FROM emp e, dept d, salgrade s
- WHERE e.deptno = d.deptno
- AND e.sal BETWEEN s.losal AND s.hisal);
-```
-*(Combines a non-equi join on `SALGRADE` with a regular equi join on `DEPT`.)*
-
-**Q3. Create a view to display employee details of those earning the Top 3 highest salaries.**
-```sql
-CREATE VIEW top3_earners AS
-SELECT * FROM (
-    SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
-) WHERE dk < 4;
-```
-*(A great example of wrapping a `DENSE_RANK()` ranking query — see [Section 21](#21-ranking-functions--row_number-rank-dense_rank) — inside a reusable view.)*
-
-**Q4. Create a view to display the total salary present in each location.**
-```sql
-CREATE VIEW loc_total_sal AS
-SELECT d.loc, SUM(e.sal) AS total_sal
-FROM emp e, dept d
-WHERE e.deptno = d.deptno
-GROUP BY d.loc;
-```
-
-**Q5. Create a materialized view to display manager name, manager's manager name.**
-```sql
-CREATE MATERIALIZED VIEW managers_manager AS
-(SELECT e.ename AS emp_name,
-        m.ename AS manager_name,
-        mm.ename AS manager_manager_name
- FROM emp e, emp m, emp mm
- WHERE e.mgr = m.empno
- AND m.mgr = mm.empno);
-```
-*(A materialized view built on a 2-level self join — combines [Section 10](#10-self-join--family-tree-example) with mview concepts.)*
-
-### ⚠️ Points to Keep in Mind — Views & Materialized Views
-
-- A **View** stores **no data at all** — it's just a saved `SELECT` statement. Every time you query it, Oracle re-runs that underlying query against the live base table(s).
-- A **Materialized View** stores **actual data** — it behaves like a real table with a snapshot of results, which is why it needs memory/storage and why it must be **refreshed** to stay current.
-- Creating either type requires an explicit `GRANT CREATE VIEW` / `GRANT CREATE MATERIALIZED VIEW` from an admin (typically via `system`) — a plain user account can't create them by default.
-- A **Simple View** built on a single table without joins/functions is generally **updatable** — `INSERT`/`UPDATE`/`DELETE` through the view can affect the base table.
-- A **Complex View** (joins, `GROUP BY`, aggregate functions, `DISTINCT`) is often **NOT directly updatable** — Oracle can't always figure out which base table row an update should apply to.
-- After creating a **materialized view**, changes to the base table are **silent** — no error, no warning — the mview just quietly keeps showing old data until you explicitly refresh it. This is the single most common gotcha.
-- Materialized views are ideal for **expensive, repeated aggregate queries** (e.g., dashboards, reports) where slightly-stale data is an acceptable trade-off for speed.
-- Regular views are ideal when you need **always up-to-date** data and the underlying query isn't too expensive to re-run each time.
-- Dropping a view: `DROP VIEW view_name;` — Dropping a materialized view: `DROP MATERIALIZED VIEW mview_name;` (these are **different DROP statements** — you can't drop an mview with the plain `DROP VIEW` syntax).
-
-### 💼 Tricky Interview Questions — Views & Mviews
-
-**Q1. If I insert a new row into the base table `emp`, does a normal View on `emp` show that new row immediately?**
-**Yes, instantly** — a view has no stored data of its own; every query against it re-reads the live base table, so any change to the base table is reflected the very next time the view is queried.
-
-**Q2. If I insert a new row into the base table, does a Materialized View built on that table show the new row immediately?**
-**No** — the materialized view keeps showing its **old snapshot** until someone explicitly runs `EXEC DBMS_MVIEW.REFRESH('mview_name');` (or an automatic refresh schedule kicks in, if one was configured). This is the single biggest source of "why is my report showing wrong numbers" bugs with materialized views.
-
-**Q3. If both a View and a Materialized View are built on the exact same complex join query, which one is faster to query repeatedly, and why?**
-The **Materialized View** is faster, because it already has the precomputed result physically stored — reading it is just a simple table scan of already-filtered data. The plain View has to **re-execute the entire join/aggregation** every single time it's queried, which gets expensive on large tables or complex joins.
-
-**Q4. If I try to run `INSERT INTO` a Complex View built with a `JOIN`, what typically happens?**
-It usually **fails** or is restricted — Oracle can't reliably determine which base table (and which specific row) the new data should go into when multiple tables are joined together. Simple views built on a single table are far more likely to support `INSERT`/`UPDATE`/`DELETE`.
-
-**Q5. If I `DROP TABLE` a base table that a view depends on, what happens to the view?**
-The view becomes **invalid** (it still exists as an object, but querying it throws an error) — since a view has no data of its own, it depends entirely on the base table existing. A materialized view, by contrast, still has its **last-refreshed data** physically stored, though it can no longer refresh further once its source table is gone.
-
-**Q6. If I want a "Top N" or ranked report (like Top 3 highest earners) to always be instantly accurate, should I use a View or a Materialized View?**
-A **View** — since ranking queries like `DENSE_RANK()` need to reflect the current state of the data (a new hire or a raise could change the ranking), a materialized view risks showing an outdated "Top 3" until refreshed. Use a materialized view only if slightly-stale rankings are acceptable in exchange for speed.
-
-**Q7. If I create a Materialized View and never call `DBMS_MVIEW.REFRESH`, does it ever update on its own?**
-Not unless it was created with an automatic refresh option (e.g., `ON COMMIT` or a refresh schedule/interval) — by default, without those options, it stays frozen at whatever data existed the moment it was created (or last manually refreshed).
-
-**Q8. Why can't I just always use Materialized Views everywhere instead of regular Views, since they're faster?**
-Because they trade **accuracy for speed** and cost **extra storage** — every materialized view duplicates real data on disk, and that data can silently go stale. For queries on small tables, or where up-to-the-second accuracy matters (e.g., checking current stock/inventory), a regular view (or the base table directly) is the safer choice.
-
-**Q9. What's the difference between `DROP VIEW` and `DROP MATERIALIZED VIEW`, and what happens if you use the wrong one?**
-They're **separate commands** for separate object types in Oracle's data dictionary — running `DROP VIEW` on a materialized view (or vice versa) fails with an error, because Oracle doesn't treat them as the same kind of object internally, even though they look similar conceptually.
+🐬 **MySQL note:** MySQL has **no native Materialized View object at all** — this is a major Oracle-only feature. Regular `VIEW` behaves the same as Oracle's, but materialized views must be simulated manually: create a real table, then populate/refresh it periodically using a scheduled `EVENT` (MySQL's cron-like scheduler) or an application job.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2119,110 +1400,46 @@ They're **separate commands** for separate object types in Oracle's data diction
 
 ## 20. Sequences
 
-### What is a Sequence
-A **Sequence** is a **database object** used to **generate a sequence of numbers** — most commonly used to auto-generate primary key values.
-
-### Key Rules & Defaults
-
-- By default, a sequence is in the state of **`NOCYCLE`** (it does **not** restart once it hits its max value — it simply stops/errors out).
-- Whenever you **do** want a sequence to cycle, you must **explicitly specify a `CACHE` value**.
-- By default, `START WITH` and `INCREMENT BY` are both **`1`**.
-- `CYCLE` makes the sequence **restart** back at its `START` value once it reaches its `MAXVALUE`.
-- The `CACHE` value **must be less than `MAXVALUE`** and **greater than `0`**.
-- **Always use `MINVALUE` in descending order sequences** — i.e. `(10 → -1)`, `(20 → -10)`, etc. (when generating descending sequences, `MINVALUE` matters more than you'd expect).
-- When you use `MINVALUE`, it **must not exceed `MAXVALUE`**.
-
-### Full Syntax
+A **Sequence** auto-generates unique numeric values, typically for primary keys.
 
 ```sql
-CREATE SEQUENCE s-name
-  START WITH val        -- optional, default 1
-  INCREMENT BY val       -- optional, default 1
-  MAXVALUE val
-  MINVALUE val
-  CYCLE / NOCYCLE         -- optional, default NOCYCLE
-  CACHE val;
-```
-
-### Basic Example
-
-```sql
-CREATE SEQUENCE seq1
+CREATE SEQUENCE emp_seq
 START WITH 1
 INCREMENT BY 1
-MAXVALUE 10;
+MAXVALUE 9999
+NOCYCLE;
+
+-- Use it
+INSERT INTO emp(empno, ename) VALUES (emp_seq.NEXTVAL, 'Ramesh');
+
+SELECT emp_seq.CURRVAL FROM dual;   -- current value (after NEXTVAL used at least once)
+SELECT emp_seq.NEXTVAL FROM dual;   -- next value, and advances the sequence
+
+ALTER SEQUENCE emp_seq INCREMENT BY 2;
+DROP SEQUENCE emp_seq;
 ```
 
-### Using a Sequence
-
-| Command | Purpose |
+| Pseudo-column | Purpose |
 |---|---|
-| `seqname.NEXTVAL` | Generates & returns the **next** value in the sequence |
-| `seqname.CURRVAL` | Returns the **current** (last generated) value |
+| `NEXTVAL` | Generates & returns the next value in sequence |
+| `CURRVAL` | Returns the current (last generated) value |
 
+🐬 **MySQL note:** Standard MySQL has **no `CREATE SEQUENCE` object at all** (only MariaDB, a MySQL fork, added it). Vanilla MySQL instead uses `AUTO_INCREMENT` directly on the column — a fundamentally different approach (attached to a column, not a standalone reusable object):
 ```sql
-SELECT seq1.NEXTVAL FROM dual;
+CREATE TABLE emp (
+    empno INT AUTO_INCREMENT PRIMARY KEY,
+    ename VARCHAR(30)
+);
+INSERT INTO emp(ename) VALUES ('Ramesh');   -- empno generated automatically
+SELECT LAST_INSERT_ID();                     -- MySQL equivalent of CURRVAL
 ```
 
-**Using a sequence to auto-generate a primary key while inserting:**
-```sql
-CREATE TABLE stud (sid NUMBER PRIMARY KEY, name VARCHAR2(10));
--- Table created.
-
-CREATE SEQUENCE seq1 START WITH 1 INCREMENT BY 1 MAXVALUE 10;
--- Sequence created.
-
-INSERT INTO stud VALUES (seq1.NEXTVAL, 'Ron');
-INSERT INTO stud VALUES (seq1.NEXTVAL, 'Smith');
-
-SELECT * FROM stud;
-```
-| sid | name |
+| Oracle | 🐬 MySQL |
 |---|---|
-| 1 | Ron |
-| 2 | Smith |
-
-### Practice Questions — Sequences
-
-**Q1. Create a sequence to generate numbers from 1 to 5.**
-```sql
-CREATE SEQUENCE seq1 START WITH 1 INCREMENT BY 1 MAXVALUE 5;
-```
-
-**Q2. Create a sequence to generate numbers from 10 down to 1 (descending).**
-```sql
-CREATE SEQUENCE seq2 START WITH 10 INCREMENT BY -1 MAXVALUE 10 MINVALUE 1;
-```
-
-**Q3. Create a sequence to generate even numbers from 1 to 10.**
-```sql
-CREATE SEQUENCE seq3 START WITH 2 INCREMENT BY 2 MAXVALUE 10;
-```
-
-**Q4. Create a sequence to generate odd numbers from 1 to 10.**
-```sql
-CREATE SEQUENCE seq4 START WITH 1 INCREMENT BY 2 MAXVALUE 10;
-```
-
-**Q5. Generate numbers from 11 to 20.**
-```sql
-CREATE SEQUENCE seq5 START WITH 10 INCREMENT BY 1 MAXVALUE 20;
-```
-*(Starting at 10 with an increment of 1 means the first `NEXTVAL` call returns 11.)*
-
-**Q6. Generate numbers from 1 to 5 and make it cycle.**
-```sql
-CREATE SEQUENCE seq6 START WITH 1 INCREMENT BY 1 MAXVALUE 5 CYCLE CACHE 2;
-```
-*(A `CACHE` value must be specified when using `CYCLE`.)*
-
-### ⚠️ Points to Keep in Mind — Sequences
-
-- A sequence is **independent of any table** — it just generates numbers; you have to explicitly plug `.NEXTVAL` into an `INSERT` to use it as a primary key generator.
-- `.CURRVAL` can only be used **after** at least one `.NEXTVAL` has been called in the **same session** — calling `CURRVAL` before any `NEXTVAL` throws an error.
-- Without `CYCLE`, once a sequence hits its `MAXVALUE`, the **next `NEXTVAL` call throws an error** (`ORA-08004`) instead of quietly stopping.
-- Sequence values can have **gaps** — if a transaction using `NEXTVAL` is rolled back, that generated number is **still "used up"** and won't be reissued. This is a common interview gotcha: sequences are **not gap-free**.
-- Dropping a sequence: `DROP SEQUENCE seqname;`
+| `SEQUENCE` object, reusable across tables | `AUTO_INCREMENT`, tied to one column in one table |
+| `.NEXTVAL` | Automatic on INSERT |
+| `.CURRVAL` | `LAST_INSERT_ID()` |
+| `ALTER SEQUENCE ... INCREMENT BY n` | `ALTER TABLE ... AUTO_INCREMENT = n` (sets next value, not step size) |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2230,337 +1447,39 @@ CREATE SEQUENCE seq6 START WITH 1 INCREMENT BY 1 MAXVALUE 5 CYCLE CACHE 2;
 
 ## 21. Ranking Functions – ROW_NUMBER, RANK, DENSE_RANK
 
-### What is DENSE_RANK
-
-`DENSE_RANK()` is a **window function** (also called a **ranking function**) used to **assign a rank** to each row based on **ascending or descending order** of a given column.
-
-- It's called a "window" function because it operates on a **window/slice** of rows (defined by `PARTITION BY`) without collapsing them into a single row — unlike `GROUP BY`, every original row still comes back, just with an extra rank column attached.
-- Unlike normal aggregate functions (`SUM`, `AVG`, `COUNT`), **rows are not merged/grouped** — each row keeps its own identity, but gets a rank number.
-- **"Dense"** means there are **no gaps** in the ranking sequence — if two rows tie for rank 3, the next distinct value gets rank 4 (not rank 5).
-
-### Syntax
+All are **window (analytic) functions** — used with `OVER (PARTITION BY ... ORDER BY ...)`.
 
 ```sql
-DENSE_RANK() OVER (
-    PARTITION BY col      -- optional: restart ranking within each group
-    ORDER BY col ASC/DESC -- required: defines what "rank 1" means
-)
-```
-The exact same syntax pattern applies to `ROW_NUMBER()` and `RANK()` — only the tie-handling behaviour differs.
-
-| Part | Meaning |
-|---|---|
-| `PARTITION BY col` | **Optional.** Works like `GROUP BY`, but doesn't collapse rows — it restarts the ranking counter for each group/partition. |
-| `ORDER BY col ASC/DESC` | **Required.** Defines the sort order used to assign ranks. `DESC` → highest value gets rank 1. `ASC` → lowest value gets rank 1. |
-
-> Without `PARTITION BY`, ranking runs across the **entire result set** as one single group.
-
-### Worked Example
-
-Given a table of salaries (with a duplicate value, to show how ties are handled):
-
-| sal |
-|---|
-| 700 |
-| 500 |
-| 400 |
-| 500 |
-| 800 |
-
-Query:
-```sql
-SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dr
+SELECT ename, deptno, sal,
+  ROW_NUMBER() OVER (PARTITION BY deptno ORDER BY sal DESC) AS rn,
+  RANK()       OVER (PARTITION BY deptno ORDER BY sal DESC) AS rnk,
+  DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) AS drnk
 FROM emp;
 ```
 
-Result (sorted by salary descending):
+**Behavior with ties** (say two employees tie for 2nd highest salary in a dept):
 
-| sal | dense_rank |
-|---|---|
-| 800 | 1 |
-| 700 | 2 |
-| 500 | 3 |
-| 500 | 3 |
-| 400 | 4 |
+| ename | sal | ROW_NUMBER | RANK | DENSE_RANK |
+|---|---|---|---|---|
+| A | 5000 | 1 | 1 | 1 |
+| B | 4000 | 2 | 2 | 2 |
+| C | 4000 | 3 | 2 | 2 |
+| D | 3000 | 4 | 4 | 3 |
 
-👉 Both rows with `sal = 500` get rank **3** (a tie), and the very next distinct value (`400`) still gets rank **4**, not 5. That's the "dense" (no-gap) behaviour.
+- **ROW_NUMBER** → always unique, sequential, no gaps, no ties.
+- **RANK** → same rank for ties, but **skips** the next rank(s) (gap after tie).
+- **DENSE_RANK** → same rank for ties, **no gap** — next rank continues immediately.
 
-**Using it to filter — find the row(s) with the 3rd highest salary:**
 ```sql
+-- Nth highest salary per department, using ROW_NUMBER (handles ties safely)
 SELECT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk
+    SELECT ename, deptno, sal,
+           ROW_NUMBER() OVER (PARTITION BY deptno ORDER BY sal DESC) AS rn
     FROM emp
-)
-WHERE dk = 3;
+) WHERE rn = 2;
 ```
 
-> ⚠️ You **cannot** filter directly with `WHERE dk = 3` in the same query where you compute `DENSE_RANK()` — window functions are evaluated **after** `WHERE`, so you must wrap it in an **inline view (subquery)** and filter in the outer query.
-
-### DENSE_RANK vs RANK vs ROW_NUMBER
-
-| Function | Behaviour on ties | Gaps after a tie? |
-|---|---|---|
-| `ROW_NUMBER()` | Gives every row a **unique** number, even ties get different numbers | — |
-| `RANK()` | Ties get the **same** rank | ✅ Yes — skips the next rank(s) (e.g. 1,2,2,4) |
-| `DENSE_RANK()` | Ties get the **same** rank | ❌ No gap — next value continues immediately (e.g. 1,2,2,3) |
-
-**Same data, side by side:**
-
-| sal | ROW_NUMBER | RANK | DENSE_RANK |
-|---|---|---|---|
-| 800 | 1 | 1 | 1 |
-| 700 | 2 | 2 | 2 |
-| 500 | 3 | 3 | 3 |
-| 500 | 4 | 3 | 3 |
-| 400 | 5 | 5 | 4 |
-
-> 💡 **Interview favorite:** "If I want the true Nth *distinct* value (e.g. 3rd highest **unique** salary, counting duplicates as one), use `DENSE_RANK`. If I want the Nth *row* regardless of duplicates, use `ROW_NUMBER`. If I want competition-style ranking (like Olympic medals, where two golds mean no silver), use `RANK`."
-
-### 🧠 How to Build These Queries Without Guessing
-
-This is the exact skill that fixes "I can't write it directly, I keep needing to test again and again." Don't try to write the whole nested query in one shot — build it in **layers**, testing each layer before adding the next.
-
-**Step 1 — Write and run the PLAIN query first.** Forget ranking for a second. Just get the raw data right.
-```sql
-SELECT sal FROM emp;
-```
-Run it. Does the data look right? Good, move on.
-
-**Step 2 — Add ORDER BY and eyeball the order.**
-```sql
-SELECT sal FROM emp ORDER BY sal DESC;
-```
-Run it. Confirm the sort direction is what you actually want (`DESC` for highest-first, `ASC` for lowest-first). This is the #1 source of "wrong Nth value" bugs.
-
-**Step 3 — Add the ranking function as an extra column, don't filter yet.**
-```sql
-SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk
-FROM emp;
-```
-Run it and **look at the `dk` column with your own eyes**. Confirm rank 1 is where you expect, confirm ties share a rank, confirm no gaps (or gaps, if using `RANK`). Don't skip this step — this is where 90% of bugs get caught early.
-
-**Step 4 — ONLY NOW wrap it as a subquery and filter.**
-```sql
-SELECT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk
-    FROM emp
-) WHERE dk = 3;
-```
-
-**Step 5 — If you need it PER GROUP, add PARTITION BY and re-test from Step 3.**
-```sql
-SELECT sal, deptno, DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) AS dk
-FROM emp;
-```
-Look at the output again — does the rank column **reset back to 1** every time `deptno` changes? If yes, you're ready to filter with `WHERE dk = 2` in an outer query.
-
-> **Golden Rule:** Never write the WHERE-filtered outer query and the ranking-function inner query at the same time. Always get the inner `SELECT ..., DENSE_RANK()/RANK()/ROW_NUMBER() OVER (...)` running and *visually verified* on its own first. Only wrap it once you trust it.
-
-### ⚠️ Points to Keep in Mind — Ranking Functions
-
-- `DENSE_RANK()`, `RANK()`, and `ROW_NUMBER()` (like all window functions) **cannot be used directly in a `WHERE` clause** — `WHERE` runs before window functions are calculated. You must compute the rank in a subquery/inline view and filter in the **outer** query.
-- They also **cannot be used in `GROUP BY` or `HAVING`** — same reason, they're evaluated after grouping/aggregation.
-- Always double check `ASC` vs `DESC` in `ORDER BY` — this single word decides whether rank 1 means "highest" or "lowest."
-- `PARTITION BY` **resets** the ranking counter for each group; without it, ranking runs across the whole table as one group.
-- If you want the **Nth highest/lowest distinct value**, use `DENSE_RANK` (duplicates count once). If you want the **Nth physical row**, use `ROW_NUMBER` (duplicates count separately, always unique). If you want competition-style ranking with intentional gaps after ties, use `RANK`.
-- `DENSE_RANK() = N` (and `RANK() = N`) can return **more than one row** if there's a tie at that rank — don't assume it always returns exactly one row. `ROW_NUMBER() = N` always returns exactly one row.
-- Combine with `DISTINCT` in the outer query if you only care about the ranked value itself and not duplicate rows tied at the same rank.
-- Window functions can be combined with aggregates (e.g. `COUNT(*)` + `DENSE_RANK()`) to rank **groups** — very common for "top N department by employee count" style questions.
-- Test the inner ranking query **standalone** before nesting it — see the [step-by-step method above](#-how-to-build-these-queries-without-guessing).
-- Unlike `ROWNUM`, ranking functions are calculated **after `ORDER BY` is logically applied within the `OVER()` clause** — so you don't need a pre-sorted inline view just to get correct ordering (though you still need an outer query to filter on the rank alias).
-
-### 📝 Practice Questions
-
-> All questions use the classic `emp`/`dept` schema. Try writing the inner ranking query yourself first, then check.
-
-**Q1. Find the 4th lowest salary.**
-```sql
-SELECT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
-) WHERE dk = 4;
-```
-
-**Q2. Find the 2nd, 4th, and 5th highest salary.**
-```sql
-SELECT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
-) WHERE dk IN (2,4,5);
-```
-
-**Q3. Find the 1st, 3rd, and 4th lowest salary.**
-```sql
-SELECT DISTINCT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
-) WHERE dk IN (1,3,4);
-```
-
-**Q4. Find employee details of those earning the 3rd or 5th highest salary.**
-```sql
-SELECT * FROM emp WHERE sal IN (
-    SELECT sal FROM (
-        SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
-    ) WHERE dk IN (3,5)
-);
-```
-
-**Q5. Find employee details of those earning the 2nd or 5th lowest salary.**
-```sql
-SELECT * FROM (
-    SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
-) WHERE dk IN (2,5);
-```
-
-**Q6. Find the Top 3 highest salaries.**
-```sql
-SELECT DISTINCT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
-) WHERE dk < 4;
-```
-
-**Q7. Find the Top 3 lowest salaries.**
-```sql
-SELECT DISTINCT * FROM (
-    SELECT sal, DENSE_RANK() OVER (ORDER BY sal ASC) AS dk FROM emp
-) WHERE dk < 4;
-```
-
-**Q8. Find employee details of those earning the Top 3 highest salaries.**
-```sql
-SELECT * FROM (
-    SELECT emp.*, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp
-) WHERE dk < 4;
-```
-
-**Q9. Find the max salary in each job.**
-```sql
-SELECT job, MAX(sal) FROM emp GROUP BY job;
-```
-*(No ranking needed — plain `GROUP BY` + `MAX` is enough here.)*
-
-**Q10. Find the max salary in each department.**
-```sql
-SELECT deptno, MAX(sal) FROM emp GROUP BY deptno;
-```
-
-**Q11. Find the 2nd max salary in each department.**
-```sql
-SELECT * FROM (
-    SELECT emp.*, DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) AS dk FROM emp
-) WHERE dk = 2;
-```
-
-**Q12. Find the 2nd max salary in each job.**
-```sql
-SELECT * FROM (
-    SELECT emp.*, DENSE_RANK() OVER (PARTITION BY job ORDER BY sal DESC) AS dk FROM emp
-) WHERE dk = 2;
-```
-
-**Q13. Find the number of employees working in each location.**
-```sql
-SELECT d.loc, COUNT(*) FROM emp e, dept d WHERE e.deptno = d.deptno GROUP BY d.loc;
-```
-*(No ranking needed.)*
-
-**Q14. Find the department/location where the highest number of employees are working.**
-```sql
-SELECT * FROM (
-    SELECT d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
-    FROM emp e, dept d WHERE e.deptno = d.deptno
-    GROUP BY d.loc
-) WHERE dk = 1;
-```
-
-**Q15. Find the location where the highest number of employees are working (with department breakdown).**
-```sql
-SELECT * FROM (
-    SELECT d.deptno, d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
-    FROM emp e, dept d WHERE e.deptno = d.deptno
-    GROUP BY d.deptno, d.loc
-) WHERE dk = 1;
-```
-
-**Q16. Find the location where the least number of employees are working.**
-```sql
-SELECT * FROM (
-    SELECT d.deptno, d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) ASC) AS dk
-    FROM emp e, dept d WHERE e.deptno = d.deptno
-    GROUP BY d.deptno, d.loc
-) WHERE dk = 1;
-```
-
-**Q17. Find the manager who has the highest number of reporting employees.**
-```sql
-SELECT * FROM (
-    SELECT m.empno, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
-    FROM emp e, emp m WHERE e.mgr = m.empno
-    GROUP BY m.empno
-) WHERE dk = 1;
-```
-
-**Q18. Find the managers who have at least 3 employees reporting to them.**
-```sql
-SELECT e.mgr, COUNT(*) FROM emp e, emp m WHERE e.mgr = m.empno
-GROUP BY e.mgr HAVING COUNT(*) >= 3;
-```
-*(Just `GROUP BY` + `HAVING` — a ranking function isn't needed for an "at least N" style question, only for "top N" or "Nth" questions.)*
-
-**Q19. Find the Top 2 locations with the highest number of employees working.**
-```sql
-SELECT * FROM (
-    SELECT d.loc, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
-    FROM emp e, dept d WHERE e.deptno = d.deptno
-    GROUP BY d.loc
-) WHERE dk <= 2;
-```
-
-**Q20. Find the Top 2 designations (jobs) with the highest number of employees.**
-```sql
-SELECT * FROM (
-    SELECT job, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dk
-    FROM emp GROUP BY job
-) WHERE dk <= 2;
-```
-
-**Q21. Find the job with the least number of employees working.**
-```sql
-SELECT * FROM (
-    SELECT job, COUNT(*), DENSE_RANK() OVER (ORDER BY COUNT(*) ASC) AS dk
-    FROM emp GROUP BY job
-) WHERE dk = 1;
-```
-
-### 💼 Interview Questions — Ranking Functions
-
-**Q1. If I write `SELECT sal, DENSE_RANK() OVER (ORDER BY sal DESC) AS dk FROM emp WHERE dk = 1;` directly, what happens?**
-It **fails** with an error, because `dk` doesn't exist yet at the point `WHERE` is evaluated — window functions execute **after** `WHERE`/`GROUP BY`/`HAVING`, so `dk` is only available at the `SELECT`/`ORDER BY` stage. You must wrap the ranking query in a subquery and filter in the **outer** `SELECT`.
-
-**Q2. If two employees are tied for the 2nd highest salary, and I filter `WHERE dk = 2`, how many rows come back?**
-**Both** of them — `DENSE_RANK` gives ties the same rank number, so any query filtering on that rank returns every row sharing it, not just one.
-
-**Q3. If I use `RANK()` instead of `DENSE_RANK()` for the same "3rd highest salary" question, could I get a different (wrong) answer?**
-Yes — if there's a tie for 2nd place, `RANK()` will **skip** rank 3 entirely (e.g., 1,2,2,4), so filtering `WHERE rnk = 3` returns **nothing**, even though there clearly is a "3rd highest distinct value" conceptually. `DENSE_RANK` avoids this by not leaving gaps.
-
-**Q4. If I forget `PARTITION BY` when I actually wanted "2nd highest salary per department," what happens?**
-The ranking runs across the **entire table** as a single group instead of restarting per department — you'll get the overall 2nd highest salary company-wide, and most departments will show **no rows at all** for `dk = 2`, since only one or two departments actually contain the company's 2nd-highest earner.
-
-**Q5. If I use `ORDER BY sal ASC` when I meant to find the highest salary, what's rank 1?**
-Rank 1 becomes the **lowest** salary, not the highest — a very common accidental-bug source. Always double-check `ASC`/`DESC` matches the actual question ("highest" → `DESC`, "lowest" → `ASC`).
-
-**Q6. Can I use `DENSE_RANK()` inside a `HAVING` clause directly?**
-No — same reason as `WHERE`: window functions are computed **after** grouping/aggregation/HAVING, so you cannot reference the rank column inside `HAVING` in the same query level. Wrap it in a subquery first.
-
-**Q7. If my table has only 2 distinct salary values but I ask for the "3rd highest salary," what does the query return?**
-**No rows** — there simply is no rank 3 to match, so the outer `WHERE dk = 3` filters everything out. This is expected behavior, not a bug.
-
-**Q8. What's the difference between using `DENSE_RANK` vs simply using `ROWNUM` with `ORDER BY` to get the "Nth highest" value?**
-`ROWNUM`-based approaches give you the Nth **row**, which breaks silently if there are duplicate values (you might get a duplicate value's row instead of the true Nth *distinct* value). `DENSE_RANK` correctly treats duplicate values as a single rank, giving you the true Nth-distinct answer, and can also *correctly* return multiple tied rows when appropriate.
-
-**Q9. If I combine `DENSE_RANK()` with `COUNT(*)` and `GROUP BY` in the same subquery, does it rank the raw rows or the grouped result?**
-It ranks the **grouped/aggregated result** — since `GROUP BY` runs before window functions are applied, `DENSE_RANK()` sees one row per group (e.g., one row per `deptno` with its `COUNT(*)`), and ranks those group-level rows.
-
-**Q10. Why must you test the inner `SELECT ..., DENSE_RANK() OVER (...)` query on its own before wrapping it in an outer filter?**
-Because if the ranking logic itself is wrong (wrong `ORDER BY` direction, missing `PARTITION BY`, wrong column), the outer query will still run **without any error** and just silently return the wrong rows — there's no error message to catch these logic mistakes, so you have to visually verify the rank column yourself before trusting it.
+🐬 **MySQL note:** Window functions (`ROW_NUMBER`, `RANK`, `DENSE_RANK`, `OVER`, `PARTITION BY`) are supported with **identical syntax** — but **only from MySQL 8.0 onward**. MySQL 5.7 and earlier have **no window functions at all**; the old workaround was user-defined session variables (`@rownum := @rownum + 1`), which is a common "how did people do this before 8.0" interview question.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2568,105 +1487,57 @@ Because if the ranking logic itself is wrong (wrong `ORDER BY` direction, missin
 
 ## 22. Triggers
 
-### What is a Trigger
-
-A **Trigger** is a **stored PL/SQL block** that gets executed **automatically** in response to a specific event happening on a table — such as `INSERT`, `UPDATE`, or `DELETE`. Unlike a procedure, you **never call a trigger manually** — the database fires it for you.
-
-### Why Use Triggers
-- To automatically **enforce complex business rules** that constraints alone can't handle.
-- To **audit** changes — automatically log who changed what and when.
-- To **maintain derived/calculated data** automatically (e.g., keeping a running total in sync).
-- To **prevent invalid operations** (e.g., blocking DML during non-business hours).
-
-### Types of Triggers
-
-**Based on Timing:**
-| Type | Fires |
-|---|---|
-| `BEFORE` | Before the triggering DML statement executes |
-| `AFTER` | After the triggering DML statement executes |
-
-**Based on Level:**
-| Type | Fires |
-|---|---|
-| **Row-level** (`FOR EACH ROW`) | Once **per row** affected by the DML |
-| **Statement-level** | **Once** per triggering statement, regardless of how many rows are affected |
-
-### Basic Syntax
+A **Trigger** is a stored PL/SQL block that automatically executes in response to an event (`INSERT`, `UPDATE`, `DELETE`) on a table.
 
 ```sql
-CREATE OR REPLACE TRIGGER trigger_name
-BEFORE/AFTER INSERT/UPDATE/DELETE ON table_name
-[FOR EACH ROW]
-BEGIN
-    -- PL/SQL logic
-END;
-```
-
-### Example 1 — Audit Trail (AFTER INSERT)
-
-```sql
-CREATE TABLE emp_audit (
-    empno NUMBER,
-    action VARCHAR2(10),
-    action_date DATE
-);
-
-CREATE OR REPLACE TRIGGER trg_emp_audit
-AFTER INSERT ON emp
-FOR EACH ROW
-BEGIN
-    INSERT INTO emp_audit VALUES (:NEW.empno, 'INSERT', SYSDATE);
-END;
-```
-> `:NEW` refers to the **new row's values** (used in `INSERT`/`UPDATE`). `:OLD` refers to the **old row's values** (used in `UPDATE`/`DELETE`). `:NEW` is **not available** in a `DELETE` trigger (nothing "new" exists), and `:OLD` is **not available** in an `INSERT` trigger (nothing "old" existed before).
-
-### Example 2 — Prevent Salary Decrease (BEFORE UPDATE)
-
-```sql
-CREATE OR REPLACE TRIGGER trg_prevent_sal_decrease
-BEFORE UPDATE OF sal ON emp
-FOR EACH ROW
-BEGIN
-    IF :NEW.sal < :OLD.sal THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Salary cannot be decreased');
-    END IF;
-END;
-```
-
-### Example 3 — Auto-populate a column (BEFORE INSERT)
-
-```sql
-CREATE OR REPLACE TRIGGER trg_auto_hiredate
+CREATE OR REPLACE TRIGGER trg_before_insert
 BEFORE INSERT ON emp
 FOR EACH ROW
 BEGIN
-    IF :NEW.hiredate IS NULL THEN
-        :NEW.hiredate := SYSDATE;
-    END IF;
+    :NEW.hiredate := SYSDATE;
 END;
+/
 ```
 
-### ⚠️ Points to Keep in Mind — Triggers
+| Trigger Type | Fires |
+|---|---|
+| `BEFORE INSERT/UPDATE/DELETE` | Before the DML event — often used for validation/defaults |
+| `AFTER INSERT/UPDATE/DELETE` | After the DML event — often used for logging/auditing |
+| `FOR EACH ROW` | Row-level trigger (fires once per affected row) |
+| Statement-level (no `FOR EACH ROW`) | Fires once per statement, regardless of row count |
 
-- Triggers execute **automatically** — they cannot be called directly like a function or procedure.
-- Overusing triggers can make debugging **very hard**, since DML on a table can silently cause a cascade of hidden side effects that aren't visible in the query itself.
-- A **row-level trigger** (`FOR EACH ROW`) can access `:NEW` and `:OLD`; a **statement-level trigger** cannot.
-- Triggers **can call other triggers**, creating a chain — watch out for **infinite trigger loops** (e.g., a trigger on `UPDATE` of a table that itself updates the same table, re-firing itself).
-- A trigger that raises an error (via `RAISE_APPLICATION_ERROR`) will **roll back** the triggering DML statement.
-- To disable/enable a trigger without dropping it: `ALTER TRIGGER trigger_name DISABLE;` / `ENABLE;`
-- To delete a trigger permanently: `DROP TRIGGER trigger_name;`
+`:OLD` and `:NEW` refer to the row's values before and after the change (available in row-level triggers).
 
-### 💼 Interview Questions — Triggers
+```sql
+-- Audit log trigger example
+CREATE OR REPLACE TRIGGER trg_audit_sal
+AFTER UPDATE OF sal ON emp
+FOR EACH ROW
+BEGIN
+    INSERT INTO sal_audit(empno, old_sal, new_sal, changed_on)
+    VALUES (:OLD.empno, :OLD.sal, :NEW.sal, SYSDATE);
+END;
+/
+```
 
-**Q1. What's the difference between a Trigger and a Stored Procedure?**
-A **Procedure** is called **explicitly** by the user/application. A **Trigger** fires **automatically** in response to a DML event — you never call it directly.
+🐬 **MySQL equivalent syntax (several real differences here):**
+```sql
+DELIMITER //
+CREATE TRIGGER trg_before_insert
+BEFORE INSERT ON emp
+FOR EACH ROW
+BEGIN
+    SET NEW.hiredate = NOW();
+END//
+DELIMITER ;
+```
 
-**Q2. Can a trigger call itself indirectly and cause an infinite loop?**
-Yes — if Trigger A's logic causes a DML operation on the same table it's defined on (or on a table with a trigger that eventually loops back), it can cause a **mutating table error** or an infinite firing loop. This is a classic Oracle trigger gotcha (`ORA-04091: table is mutating`).
-
-**Q3. What's the difference between `:NEW` and `:OLD`?**
-`:NEW` holds the **new/incoming** values (available in `INSERT`/`UPDATE` triggers). `:OLD` holds the **existing/previous** values (available in `UPDATE`/`DELETE` triggers). Neither is available in the opposite scenario (`:OLD` doesn't exist for a fresh `INSERT`; `:NEW` doesn't exist for a `DELETE`).
+| Oracle | 🐬 MySQL |
+|---|---|
+| `:OLD.col` / `:NEW.col` (colon prefix) | `OLD.col` / `NEW.col` (no colon) |
+| Ends with `END; /` | Needs `DELIMITER //` switch before, `DELIMITER ;` after (since `;` is used inside the trigger body) |
+| Supports statement-level triggers (no `FOR EACH ROW`) | **Every trigger is row-level** — `FOR EACH ROW` is mandatory, no statement-level option |
+| `AFTER UPDATE OF sal ON emp` (column-specific trigger) | No column-specific trigger — fires on **any** UPDATE, must check `IF NEW.sal <> OLD.sal` manually inside the body |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2674,72 +1545,30 @@ Yes — if Trigger A's logic causes a DML operation on the same table it's defin
 
 ## 23. Indexing
 
-### What is an Index
+An **Index** is a database object that speeds up data retrieval by creating a fast lookup structure (commonly a B-tree) on one or more columns — at the cost of slower writes and extra storage.
 
-An **Index** is a **database object** used to **speed up data retrieval** on a table, at the cost of some extra storage and slightly slower writes. Conceptually, it works like the index at the back of a book — instead of scanning every page, you jump straight to what you need.
+```sql
+CREATE INDEX idx_ename ON emp(ename);
+CREATE UNIQUE INDEX idx_empno ON emp(empno);
+DROP INDEX idx_ename;
+```
 
-### Why Use Indexes
-- Dramatically speeds up `SELECT` queries with a `WHERE` clause, `JOIN` conditions, and `ORDER BY` on the indexed column(s).
-- Without an index, Oracle must perform a **Full Table Scan** — reading every single row to check if it matches.
+🐬 **MySQL:** `CREATE INDEX`/`CREATE UNIQUE INDEX` identical. But `DROP INDEX` syntax differs slightly — MySQL requires specifying the table: `DROP INDEX idx_ename ON emp;` (Oracle just needs the index name, since index names are globally unique per schema in Oracle but scoped to the table in MySQL).
 
 ### Types of Indexes
-
 | Type | Description |
 |---|---|
-| **Unique Index** | Automatically created on `PRIMARY KEY` and `UNIQUE` constraint columns — ensures uniqueness |
-| **Non-Unique Index** | Manually created by the developer on frequently-searched columns; duplicates allowed |
-| **Composite Index** | An index built on **more than one column** together |
-| **Function-Based Index** | An index built on the **result of a function/expression**, not a raw column value |
+| **B-Tree Index** | Default type; balanced tree, good for equality & range queries |
+| **Bitmap Index** | Good for low-cardinality columns (e.g. gender, status); Oracle-specific, used in data warehousing |
+| **Unique Index** | Enforces uniqueness (auto-created for PK/UNIQUE constraints) |
+| **Composite Index** | Index on multiple columns together |
 
-### Syntax
+✅ **Speeds up:** `SELECT`, `WHERE`, `JOIN`, `ORDER BY` on indexed columns.
+❌ **Slows down:** `INSERT`, `UPDATE`, `DELETE` (index must be updated too).
 
-```sql
-CREATE INDEX index_name ON table_name(column_name);
-```
+> 🔗 Recall from Section 3: a **PRIMARY KEY is automatically indexed** by Oracle (and MySQL) — no need to create one manually.
 
-```sql
--- Basic index on a frequently searched column
-CREATE INDEX idx_emp_ename ON emp(ename);
-
--- Composite index (multiple columns)
-CREATE INDEX idx_emp_dept_job ON emp(deptno, job);
-
--- Function-based index
-CREATE INDEX idx_emp_upper_ename ON emp(UPPER(ename));
-```
-
-> 💡 **Automatic indexing:** Oracle **automatically** creates a unique index whenever you define a `PRIMARY KEY` or `UNIQUE` constraint — you don't need to manually create one for those columns.
-
-### When an Index Helps vs Doesn't Help
-
-✅ **Helps when:**
-- The column is frequently used in `WHERE`, `JOIN`, or `ORDER BY`.
-- The table is **large**, and the column has **high selectivity** (many distinct values — e.g. `empno`, `email`).
-
-❌ **Doesn't help much (or can hurt) when:**
-- The table is **small** (a full scan is already fast).
-- The column has **low selectivity** (few distinct values — e.g. a `gender` column with only 'M'/'F').
-- The table has **heavy INSERT/UPDATE/DELETE traffic** — every index must also be updated on every write, slowing writes down.
-
-### ⚠️ Points to Keep in Mind — Indexing
-
-- Indexes speed up **reads** but slow down **writes** (`INSERT`/`UPDATE`/`DELETE`), because the index itself must also be updated every time the underlying data changes.
-- Indexing every column "just in case" is a common beginner mistake — it bloats storage and slows down write-heavy tables for little to no read benefit.
-- A `PRIMARY KEY` is **always indexed automatically** — you never need to manually index it.
-- Using a function on an indexed column in a `WHERE` clause (e.g. `WHERE UPPER(ename) = 'SMITH'`) will **not use a normal index** unless you specifically create a **function-based index** on that expression.
-- `LIKE '%value'` (wildcard at the **start**) generally **cannot** use a standard index efficiently, since the index is sorted left-to-right; `LIKE 'value%'` (wildcard at the **end**) can.
-- To remove an index: `DROP INDEX index_name;`
-
-### 💼 Interview Questions — Indexing
-
-**Q1. Why not just index every column in every table?**
-Because indexes cost **storage** and **write performance** — every `INSERT`/`UPDATE`/`DELETE` has to update every index on that table too. Over-indexing can make write-heavy systems significantly slower for marginal or no read benefit, especially on low-selectivity columns.
-
-**Q2. If a table has only 10 rows, does adding an index make queries faster?**
-Not meaningfully — Oracle's optimizer will likely still choose a **Full Table Scan** for such a tiny table, since scanning 10 rows directly is already faster than the overhead of using an index structure.
-
-**Q3. Why doesn't `WHERE UPPER(ename) = 'SMITH'` use a normal index on `ename`?**
-Because the index was built on the **raw** `ename` values, not on `UPPER(ename)`. Applying a function to the column at query time means Oracle can't directly match against the existing index — you'd need a separate **function-based index** built specifically on `UPPER(ename)`.
+🐬 **MySQL note:** Default index type is also B-Tree. MySQL additionally supports **FULLTEXT** indexes (for natural-language text search, e.g. `MATCH() AGAINST()`) and **HASH** indexes (mainly in the Memory storage engine). **Bitmap indexes don't exist in MySQL at all** — that's Oracle-only, tied to Oracle's data-warehousing feature set.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2747,76 +1576,57 @@ Because the index was built on the **raw** `ename` values, not on `UPPER(ename)`
 
 ## 24. Normalization
 
-### What is Normalization
+**Normalization** organizes data to reduce **redundancy** and avoid **update/insert/delete anomalies**, by breaking large tables into smaller, related ones.
 
-**Normalization** is the process of **organizing data in a database** to **reduce redundancy** (duplicate data) and **improve data integrity**, by splitting large tables into smaller, related tables — connected via **Foreign Keys**.
+### 1NF (First Normal Form)
+- Each column contains **atomic (indivisible)** values.
+- No repeating groups / no multi-valued columns.
 
-> This is exactly *why* we need **Joins** — because normalization intentionally spreads related data across multiple tables, joins are what bring that data back together for meaningful queries.
-
-### Why Normalize
-- Avoids **storing the same information multiple times** (e.g., a customer's address repeated in every order row).
-- Prevents **update anomalies** — if data is duplicated and you update it in one place but not another, the data becomes inconsistent.
-- Improves overall **data integrity and consistency**.
-
-### Normal Forms (Overview)
-
-| Normal Form | Rule |
-|---|---|
-| **1NF** (First Normal Form) | Each column must hold **atomic (indivisible)** values — no repeating groups or multi-valued columns in a single cell. |
-| **2NF** (Second Normal Form) | Must already be in 1NF, **and** every non-key column must depend on the **whole** primary key (relevant mainly for composite keys — removes **partial dependency**). |
-| **3NF** (Third Normal Form) | Must already be in 2NF, **and** no non-key column should depend on another **non-key column** (removes **transitive dependency**). |
-
-### Example — Un-normalized → Normalized
-
-**Before (violates 1NF — multiple phone numbers in one cell):**
-
-| StudentID | Name | Phones |
+❌ Violates 1NF:
+| id | name | phones |
 |---|---|---|
-| 1 | Raju | 9999999999, 8888888888 |
+| 1 | Ravi | 9876543210, 9123456780 |
 
-**After 1NF (atomic values, one row per phone):**
-
-| StudentID | Name | Phone |
+✅ Fixed (1NF):
+| id | name | phone |
 |---|---|---|
-| 1 | Raju | 9999999999 |
-| 1 | Raju | 8888888888 |
+| 1 | Ravi | 9876543210 |
+| 1 | Ravi | 9123456780 |
 
-**Example violating 3NF (transitive dependency):**
+### 2NF (Second Normal Form)
+- Must already be in 1NF.
+- No **partial dependency** — every non-key column must depend on the **entire** composite primary key, not just part of it. (Only relevant when PK is composite.)
 
-| EmpID | DeptID | DeptName |
+❌ Violates 2NF (PK = studentID+courseID, but `student_name` depends only on studentID):
+| studentID | courseID | student_name | grade |
+|---|---|---|---|
+
+✅ Fixed → split into `student(studentID, student_name)` and `enrollment(studentID, courseID, grade)`.
+
+### 3NF (Third Normal Form)
+- Must already be in 2NF.
+- No **transitive dependency** — non-key columns must depend only on the primary key, not on other non-key columns.
+
+❌ Violates 3NF (zip determines city, but city isn't directly dependent on the PK empno):
+| empno | zip | city |
 |---|---|---|
-| 1 | 10 | Accounting |
 
-Here, `DeptName` depends on `DeptID`, **not directly on `EmpID`** — this is a transitive dependency. To fix it (achieve 3NF), split into two tables:
+✅ Fixed → split into `employee(empno, zip)` and `zip_city(zip, city)`.
 
-**Employee table:**
-| EmpID | DeptID |
+### BCNF (Boyce-Codd Normal Form)
+- Stricter version of 3NF — for every functional dependency `X → Y`, X must be a **super key**.
+
+### Summary Table
+| Form | Rule |
 |---|---|
+| 1NF | Atomic values, no repeating groups |
+| 2NF | 1NF + no partial dependency (on composite key) |
+| 3NF | 2NF + no transitive dependency |
+| BCNF | 3NF + every determinant is a super key |
 
-**Department table:**
-| DeptID | DeptName |
-|---|---|
+> 💡 Denormalization (opposite of normalization) is sometimes done deliberately for read-heavy systems to reduce JOINs and improve performance — a common trade-off discussion in interviews.
 
-### Denormalization (the opposite, briefly)
-Sometimes, for **performance reasons** (fewer joins, faster reads on read-heavy systems like reporting/analytics), data is **intentionally denormalized** — some redundancy is reintroduced on purpose to avoid expensive joins. This is a deliberate trade-off, not a mistake.
-
-### ⚠️ Points to Keep in Mind — Normalization
-
-- Normalization reduces redundancy but **increases the number of joins** needed to retrieve combined data — that's the direct trade-off.
-- Most real-world relational schemas (like `EMP`/`DEPT`) are normalized to **3NF** as a practical sweet spot — going further (4NF, 5NF, BCNF) is less common outside specialized cases.
-- Over-normalizing can hurt **read performance** on very large, read-heavy systems — this is why **denormalization** is sometimes deliberately used for reporting/analytics tables.
-- A classic interview trap: normalization is about **reducing redundancy**, not about making tables "smaller" for its own sake — the actual goal is **data integrity**.
-
-### 💼 Interview Questions — Normalization
-
-**Q1. Why do we need Joins because of Normalization?**
-Because normalization deliberately splits related data into **separate tables** to avoid redundancy — so to reconstruct a full picture (e.g., employee name + department name), you **must** join those tables back together.
-
-**Q2. What's the difference between 2NF and 3NF in simple terms?**
-2NF removes **partial dependency** (a non-key column depending on only *part* of a composite primary key). 3NF removes **transitive dependency** (a non-key column depending on *another non-key column*, instead of directly on the primary key).
-
-**Q3. Is more normalization always better?**
-No — it's a trade-off. More normalization means less redundancy and better integrity, but **more joins** and potentially **slower reads** on very large systems. That's why **denormalization** is sometimes used deliberately for performance-critical reporting tables.
+This concept is **pure relational theory**, identical across Oracle, MySQL, and any RDBMS — not vendor-specific at all.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2824,35 +1634,15 @@ No — it's a trade-off. More normalization means less redundancy and better int
 
 ## 25. 🎯 ROWNUM vs ROW_NUMBER vs RANK vs DENSE_RANK
 
-A common source of confusion is picking the right tool for "Nth row / Nth highest / Top N" style questions. Here's the decision guide:
-
-| Situation | Use | Why |
-|---|---|---|
-| Just want the "first N rows" of a query, don't care about ties/duplicates at all | **ROWNUM** | Simplest — a plain pseudo-column, no `OVER()` needed. `WHERE rownum<=5` |
-| Need the "Nth row" (e.g. exactly row 2), but must sort first | **ROWNUM** inside an inline view (sort in inner query, apply `ROWNUM` in outer) | `ROWNUM` is assigned **before** `ORDER BY`, so sorting has to happen in an inner query first |
-| Want a guaranteed **unique** number per row, even for exact duplicate values (e.g. paginate results, or need exactly one row per rank no matter what) | **ROW_NUMBER()** | Never ties — every row gets a distinct sequential number, even if two rows have identical values |
-| Want "Nth highest/lowest **distinct** value" and duplicates should count as ONE rank, with **no gaps** afterward (e.g. 3rd highest salary — counting a tie as one shared rank) | **DENSE_RANK()** | Ties share a rank; the next distinct value continues immediately (1,2,2,3 — not 1,2,2,4) |
-| Want **competition-style ("Olympic") ranking**, where a tie should visibly "use up" the next rank slot(s) (e.g. 2 people tied for gold means nobody gets silver, next is bronze/rank 3) | **RANK()** | Ties share a rank, but the following rank is **skipped** to reflect how many rows tied (1,2,2,4) |
-| Need to rank **within groups** (e.g. 2nd highest salary *per department*, top 2 products *per category*) | **DENSE_RANK() / RANK() / ROW_NUMBER() with `PARTITION BY`** | `PARTITION BY` restarts the ranking counter for every group — `ROWNUM` cannot do this natively |
-| Filtering directly in a `WHERE` clause without any inline view/subquery | **ROWNUM only** (with the `<=` / `<` / `=1` caveats) | `DENSE_RANK`/`RANK`/`ROW_NUMBER` are window functions — they are **never** usable directly in `WHERE`, always need an outer query |
-| Data may have duplicate values and you want the true "Nth distinct value" answer to be bug-proof against those duplicates | **DENSE_RANK()** | `ROWNUM`/`ROW_NUMBER` will happily return a duplicate value's row as if it were a distinct rank — `DENSE_RANK` is duplicate-safe |
-
-### Quick memory hooks
-- **ROWNUM** → "just give me row N, I don't care about values or ties." Oldest, simplest, but gets assigned *before* sorting.
-- **ROW_NUMBER()** → "give every row its own unique number, ties or not." Good for pagination.
-- **RANK()** → "Olympic medal style — ties eat up the next spot(s)."
-- **DENSE_RANK()** → "ties share a spot, but nothing after it gets skipped." Best default choice for "Nth highest/lowest distinct value" interview questions.
-
-### ⚠️ Conditions to Keep in Mind (combined — ROWNUM + Ranking Functions)
-
-- `ROWNUM` is a **pseudo-column** (not a real function); `ROW_NUMBER()`, `RANK()`, `DENSE_RANK()` are **window/ranking functions** that require `OVER (...)`. They are not interchangeable syntactically.
-- `ROWNUM` is assigned **before `ORDER BY`** runs — always sort in an inner query first, then apply `ROWNUM` in the outer query, or the row numbers won't match the sort order you expect.
-- `WHERE rownum = 2` (or any number greater than 1) **never works directly** — Oracle evaluates row 1 first, fails the condition, and never proceeds to "assign" row 2. Always use `<=` / `<` for ROWNUM range filters, or wrap in an inline view with an alias if you need an exact row.
-- None of `ROWNUM`, `ROW_NUMBER()`, `RANK()`, or `DENSE_RANK()` can be filtered directly in the **same-level** `WHERE`, `GROUP BY`, or `HAVING` clause where they're computed — always wrap in a subquery/inline view and filter in the outer query.
-- `PARTITION BY` only applies to the three window ranking functions, **not** to `ROWNUM` — if you need per-group numbering, you must use `ROW_NUMBER()`/`RANK()`/`DENSE_RANK()`.
-- `DENSE_RANK() = N` and `RANK() = N` can return **multiple rows** if there's a tie at that rank; `ROW_NUMBER() = N` and `ROWNUM = N` always return **at most one row**.
-- Always double-check `ASC` vs `DESC` in the `ORDER BY` used for ranking — it decides whether "rank 1" means highest or lowest.
-- Test the inner ranking/ROWNUM query **standalone first**, visually confirm the numbers look right, and only then wrap it in an outer filter — a wrong `ORDER BY` or missing `PARTITION BY` produces no error, just silently wrong results.
+| Feature | ROWNUM | ROW_NUMBER() | RANK() | DENSE_RANK() |
+|---|---|---|---|---|
+| Vendor | Oracle only | Oracle + 🐬 MySQL 8+ | Oracle + 🐬 MySQL 8+ | Oracle + 🐬 MySQL 8+ |
+| Needs `OVER()` | No | Yes | Yes | Yes |
+| Assigned before/after ORDER BY | Before (unless wrapped in subquery) | Follows the OVER's ORDER BY | Follows the OVER's ORDER BY | Follows the OVER's ORDER BY |
+| Handles ties | N/A (no ordering awareness) | No ties — always unique | Ties get same rank, gap after | Ties get same rank, no gap |
+| Supports PARTITION BY | No | Yes | Yes | Yes |
+| Typical use | Limit rows (Oracle pagination) | Unique row numbering per group | Leaderboard-style ranking with gaps | Leaderboard-style ranking without gaps |
+| 🐬 MySQL equivalent for row-limiting | `LIMIT` / `LIMIT OFFSET` | — | — | — |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2860,97 +1650,28 @@ A common source of confusion is picking the right tool for "Nth row / Nth highes
 
 ## 26. 🧭 Decision Guide — When to Use What
 
-The hardest part of SQL isn't knowing the syntax — it's knowing **which tool fits which question**. Here's a practical decision guide built around the phrasing of the question itself.
-
-### Step 1: What is the question actually asking?
-
-| Question phrasing | Tool to reach for |
-|---|---|
-| "Show me X **combined with** Y from two tables" (e.g. employee + department info together) | **JOIN** |
-| "Show me employees **even if** they have no department / matching record" | **OUTER JOIN** (Left/Right/Full) |
-| "Show me X where a **condition depends on a single aggregate value**" (e.g. "salary = max salary") | **Subquery** (non-correlated, single row) |
-| "Show me X where a **condition depends on a value that changes per row**" (e.g. "salary > average salary **of their own department**") | **Correlated Subquery** |
-| "Does at least one matching row exist?" (existence check, no need for the actual matched data) | **EXISTS / NOT EXISTS** (correlated) |
-| "Show me the **Nth** highest/lowest / **Top N**" | **DENSE_RANK()** (or `ROWNUM` for a simpler "just the top N rows" case) |
-| "Show me totals/counts/averages **per group**" (e.g. total salary per department) | **GROUP BY** + aggregate function |
-| "Show me totals/counts/averages **per group**, but only keep groups matching a condition" (e.g. departments with more than 3 employees) | **GROUP BY + HAVING** |
-| "Show me a value, categorized into custom labels/buckets" (e.g. "High"/"Low" based on salary) | **CASE Expression** |
-| "Combine results of two separate queries into one list" | **Set Operator** (`UNION`/`UNION ALL`/`INTERSECT`/`MINUS`) |
-| "Auto-generate a sequence of numbers" (e.g. for a primary key) | **SEQUENCE** |
-| "Automatically do something whenever a row is inserted/updated/deleted" | **TRIGGER** |
-| "Speed up searching/filtering on a large table" | **INDEX** |
-
-### Step 2: JOIN vs Subquery — which one?
-
-| | JOIN | Subquery |
+| Need | Oracle | 🐬 MySQL |
 |---|---|---|
-| Best when | You need columns from **both** tables in the final output | You only need to **filter/compare** using a value from another table, not display its columns |
-| Performance (large data) | Generally faster (optimizer handles it in one pass) | Can be slower, especially if correlated (executes per row) |
-| Readability | Better for combining full row data | Better for "where value matches/compares to a computed result" |
-
-> **Rule of thumb:** If you need to **display** columns from another table → **JOIN**. If you only need to **check/compare** against another table's value → **Subquery**.
-
-### Step 3: Subquery vs Correlated Subquery — which one?
-
-| | Regular Subquery | Correlated Subquery |
-|---|---|---|
-| Depends on outer query? | ❌ No — runs once, independently | ✅ Yes — references outer query's column |
-| Executes | **Once**, total | **Once per row** of the outer query |
-| Best for | Fixed comparisons (e.g. "= overall max salary") | Per-row comparisons (e.g. "> average salary **of my own department**") |
-| Performance | Faster (single execution) | Slower on large tables (runs repeatedly) |
-
-> **Rule of thumb:** If the inner query's condition needs to reference something from the **current outer row** (like `e.deptno` inside the inner query), it's correlated — and it's the *only* way to express "compared to my own group" logic without `PARTITION BY`.
-
-### Step 4: Correlated Subquery vs Window Function (DENSE_RANK/PARTITION BY) — which one?
-
-Both can answer "compare this row to its group," but they solve **different shapes of question**:
-
-| | Correlated Subquery | Window Function (`PARTITION BY`) |
-|---|---|---|
-| Best for | "**Is this row above/below** a group aggregate" (yes/no filter) — e.g. "salary > dept average" | "**What rank/position** does this row hold" — e.g. "2nd highest salary per department" |
-| Returns | Filtered rows only (via `WHERE`) | Every row, **plus** a rank/position value attached |
-| Performance on large data | Slower (runs per row) | Generally faster (single pass with internal sorting) |
-| Typical clause | `WHERE sal > (SELECT AVG(sal) ...)` | `SELECT ..., DENSE_RANK() OVER (PARTITION BY ... ORDER BY ...)` |
-
-> **Rule of thumb:** If the question is "is this above/below the group's aggregate" → **Correlated Subquery**. If the question is "what position/rank does this hold within its group" (2nd, 3rd, Top N) → **Window Function** (`DENSE_RANK`/`RANK`/`ROW_NUMBER` + `PARTITION BY`).
-
-### Step 5: GROUP BY vs Window Function — which one?
-
-| | GROUP BY | Window Function |
-|---|---|---|
-| Rows returned | **One row per group** (collapses rows) | **Every original row** (keeps all detail, adds a computed column) |
-| Best for | "Give me totals/counts **per group**" | "Give me each row **plus** its rank/position within a group" |
-| Can combine with row-level detail? | ❌ No — loses individual row detail | ✅ Yes — every row's original detail is preserved |
-
-> **Rule of thumb:** If you want a **summary** (one row per department, say), use `GROUP BY`. If you want to see **every employee** with an extra "rank within department" column, use a window function with `PARTITION BY` — `GROUP BY` alone cannot do this.
-
-### Step 6: View vs Materialized View — which one?
-
-Already covered in depth in [Section 19](#19-views--materialized-views) — quick recap:
-
-> **Rule of thumb:** Need **always up-to-date** results and the query isn't too expensive? → **View**. Need **speed** on an expensive/repeated query, and can tolerate slightly-stale data until a refresh? → **Materialized View**.
-
-### 🧩 Worked Example — Same Data, Four Different Questions, Four Different Tools
-
-Given `emp` (with `ename`, `sal`, `deptno`) and `dept` (with `deptno`, `dname`):
-
-```sql
--- 1) "Show employee name WITH their department name" → JOIN
-SELECT e.ename, d.dname FROM emp e JOIN dept d ON e.deptno = d.deptno;
-
--- 2) "Show employees earning MORE than their OWN department's average" → Correlated Subquery
-SELECT * FROM emp e WHERE e.sal > (SELECT AVG(sal) FROM emp e1 WHERE e.deptno = e1.deptno);
-
--- 3) "Show the 2nd highest salary PER department, with full row detail" → Window Function
-SELECT * FROM (
-    SELECT emp.*, DENSE_RANK() OVER (PARTITION BY deptno ORDER BY sal DESC) dk FROM emp
-) WHERE dk = 2;
-
--- 4) "Show total salary PER department (just the totals)" → GROUP BY
-SELECT deptno, SUM(sal) FROM emp GROUP BY deptno;
-```
-
-Notice: all four questions touch the **same tables**, but the **shape of the question** decides the tool — that's the entire skill.
+| Fixed-length code (gender, state code) | `CHAR` | `CHAR` (same) |
+| Variable-length text, exact length unknown | `VARCHAR2` | `VARCHAR` |
+| Large text (articles, resumes) | `CLOB` | `TEXT` / `LONGTEXT` |
+| Images/files | `BLOB` | `BLOB` / `LONGBLOB` |
+| Auto-generated unique IDs | `SEQUENCE` | `AUTO_INCREMENT` |
+| Reusable complex query, no storage | `VIEW` | `VIEW` (same) |
+| Reusable complex query, pre-computed for speed | `MATERIALIZED VIEW` | Table + scheduled `EVENT` (no native support) |
+| Auto-run logic on data change | `TRIGGER` | `TRIGGER` (minor syntax diffs) |
+| Speed up SELECT/WHERE/JOIN | `INDEX` | `INDEX` (same) |
+| Get Nth highest value safely (with ties) | `ROW_NUMBER()` in subquery | `ROW_NUMBER()` in subquery (8.0+) |
+| Leaderboard ranks allowing/disallowing gaps | `RANK()` / `DENSE_RANK()` | `RANK()` / `DENSE_RANK()` (8.0+) |
+| Filter individual rows before grouping | `WHERE` | `WHERE` (same) |
+| Filter after aggregation/grouping | `HAVING` | `HAVING` (same) |
+| Undo uncommitted changes | `ROLLBACK` (optionally to `SAVEPOINT`) | `ROLLBACK` — InnoDB only |
+| Permanently save changes | `COMMIT` | `COMMIT` — autocommit is ON by default |
+| Reduce data redundancy | Normalization (1NF→3NF/BCNF) | Same (vendor-neutral theory) |
+| Improve read performance at cost of redundancy | Denormalization | Same |
+| Recover an accidentally dropped table | `FLASHBACK` | ❌ No equivalent — rely on backups/binlogs |
+| Row limiting / pagination | `ROWNUM` + subquery, or `OFFSET...FETCH` (12c+) | `LIMIT OFFSET` (much simpler) |
+| Simple string concatenation | `\|\|` operator | `CONCAT()` function |
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2958,31 +1679,22 @@ Notice: all four questions touch the **same tables**, but the **shape of the que
 
 ## 27. 🔑 Interview Quick-Fire Points
 
-- `SEQUEL` was SQL's original name; introduced by Raymond Boyce & Donald Chamberlin.
-- Relational model → E.F. Codd. Document model → JSON/XML (MongoDB, Redis, Cassandra).
-- Always prefer **VARCHAR2** over VARCHAR in Oracle.
-- `PRIMARY KEY = UNIQUE + NOT NULL`, and is **auto-indexed**.
-- Single Row Function → n input, n output. Multi Row Function → n input, 1 output.
-- Inner Join → matched rows only. Outer Joins → keep unmatched rows from one/both sides.
-- Natural Join has **no Oracle syntax**, ANSI only.
-- `ROWNUM` is assigned **before** `ORDER BY` — always use an Inline View to sort-then-rank.
-- Query execution order: `FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY`.
-- WHERE filters rows; HAVING filters groups.
-- `TRUNCATE` = no rollback, resets storage, keeps structure. `DROP` = removes table entirely (recoverable via FLASHBACK until purged). `DELETE` = DML, row-by-row, fully rollback-able.
-- A dropped table can be restored using `FLASHBACK TABLE ... TO BEFORE DROP` as long as it hasn't been `PURGE`d.
-- `ROLLBACK TO savepoint` keeps everything up to that savepoint but undoes everything after it.
-- `GRANT`/`REVOKE` require the target table to be accessed as `schema.tablename` by the grantee.
-- A **View** stores only a query (no data, always live); a **Materialized View** stores actual data (a physical snapshot) and needs manual/scheduled refresh to stay current.
-- `DENSE_RANK` = no gaps after ties; `RANK` = gaps after ties (Olympic-style); `ROW_NUMBER` = always unique, no ties possible.
-- A subquery becomes **correlated** the moment it references the outer query's column inside itself; it runs once per outer row.
-- `UNION` removes duplicates + sorts (slower); `UNION ALL` keeps duplicates (faster).
-- `ANY` = true if at least one match; `ALL` = true only if every value matches.
-- `EXISTS` is generally faster than `IN` for correlated checks, since it short-circuits on the first match.
-- `CASE` expressions evaluate top-to-bottom, first match wins — just like an `else-if` ladder.
-- Sequences are **not gap-free** — a rolled-back transaction still "burns" that `NEXTVAL`.
-- Triggers fire **automatically**; `:NEW`/`:OLD` give access to incoming/existing row values.
-- Indexes speed up reads but slow down writes — don't index every column.
-- Normalization reduces redundancy but increases the number of joins needed — that trade-off is exactly why joins exist.
+- `DELETE` is DML (logged, rollback-able, can use WHERE); `TRUNCATE` is DDL (not rollback-able*, resets storage, no WHERE); `DROP` removes the table entirely.
+  *(In Oracle, TRUNCATE auto-commits and cannot be rolled back; in MySQL/InnoDB it behaves similarly — implicit commit.)*
+- `WHERE` filters rows before grouping; `HAVING` filters groups after aggregation.
+- `PRIMARY KEY` = `UNIQUE` + `NOT NULL`; only one PK per table, but multiple UNIQUE constraints allowed.
+- A `FOREIGN KEY` enforces referential integrity between a child and parent table — **only enforced on MySQL's InnoDB engine**, not MyISAM.
+- `VARCHAR2` is Oracle-only; MySQL just uses `VARCHAR` for everything.
+- `UNION` removes duplicates (implicit sort/dedup — slower); `UNION ALL` keeps duplicates (faster).
+- Correlated subqueries run once **per outer row**; plain subqueries run **once**.
+- `RANK()` leaves gaps after ties; `DENSE_RANK()` does not; `ROW_NUMBER()` never ties. All require MySQL 8.0+.
+- Views can hide sensitive columns and simplify complex joins for end users — a security & abstraction tool. Works the same in both.
+- Index speeds up reads, slows down writes — don't over-index write-heavy tables.
+- ACID = Atomicity, Consistency, Isolation, Durability — the four guarantees of a reliable transaction.
+- Normalization reduces redundancy; over-normalizing can hurt performance due to excessive JOINs (hence denormalization in read-heavy analytics systems).
+- Oracle has `SEQUENCE` + `FLASHBACK` + `MATERIALIZED VIEW` + `ROWNUM` + `(+)` outer join syntax — **none of these five exist in MySQL.**
+- MySQL has `LIMIT`/`OFFSET`, `AUTO_INCREMENT`, and requires `CONCAT()` instead of `||` — simpler in places, but with real feature gaps vs Oracle in enterprise use cases.
+- Default transaction behavior differs: Oracle requires explicit `COMMIT`; MySQL auto-commits every statement by default unless a transaction is explicitly started.
 
 [⬆ Back to top](#-table-of-contents)
 
@@ -2990,96 +1702,413 @@ Notice: all four questions touch the **same tables**, but the **shape of the que
 
 ## 28. 💼 Most Asked Interview Questions
 
-**1. What is the difference between DELETE, TRUNCATE and DROP?**
-| | DELETE | TRUNCATE | DROP |
-|---|---|---|---|
-| Type | DML | DDL | DDL |
-| Removes | Selected rows (WHERE) | All rows | Entire table (structure + data) |
-| Rollback | Yes | No (auto-commits) | Recoverable via FLASHBACK until purged |
-| Speed | Slower (row by row, logged) | Faster | Fastest |
+**Q1: Difference between DELETE, TRUNCATE, and DROP?**
+DELETE removes specific rows (DML, uses WHERE, rollback-able), TRUNCATE removes all rows but keeps structure (DDL, faster, not rollback-able), DROP removes the entire table object including structure.
 
-**2. What is the difference between WHERE and HAVING?**
-`WHERE` filters rows **before** grouping and cannot use aggregate functions. `HAVING` filters **groups** after `GROUP BY` and is commonly used with aggregate functions.
+**Q2: Difference between WHERE and HAVING?**
+WHERE filters rows before grouping and can't use aggregate functions; HAVING filters grouped results and can use aggregates.
 
-**3. What is the difference between UNION and UNION ALL?**
-`UNION` removes duplicate rows (does an implicit sort/dedup, slower); `UNION ALL` keeps all rows including duplicates (faster).
+**Q3: What is a Primary Key vs Foreign Key?**
+Primary Key uniquely identifies each row in its own table (unique + not null); Foreign Key references a Primary Key in another table to establish a relationship.
 
-**4. What is a Primary Key vs a Unique Key?**
-Both enforce uniqueness, but a Primary Key does **not allow NULL** and a table can have only **one**. A Unique Key **allows one NULL** (some DBs allow more) and a table can have **multiple** Unique Keys.
+**Q4: Difference between CHAR and VARCHAR2 (or VARCHAR in MySQL)?**
+CHAR is fixed-length (pads with spaces, faster comparison); VARCHAR2/VARCHAR is variable-length (saves space, slightly slower).
 
-**5. What is the difference between CHAR and VARCHAR2?**
-`CHAR` is fixed-length (pads with spaces, wastes memory); `VARCHAR2` is variable-length (uses only the required space, Oracle-recommended, up to 4000 bytes).
+**Q5: What are ACID properties?**
+Atomicity, Consistency, Isolation, Durability — properties that guarantee reliable transaction processing.
 
-**6. What is a Self Join? Give a real use case.**
-A join of a table with itself using aliases. Common use case: employee–manager hierarchy, or finding a grandfather/great-grandfather in a family tree (see [Section 10](#10-self-join--family-tree-example)).
+**Q6: Difference between View and Materialized View?**
+A View is virtual (no storage, always live), a Materialized View physically stores query results (needs manual/scheduled refresh, faster reads). Note: MySQL has no native materialized view support at all.
 
-**7. Difference between Inner Join and Outer Join?**
-Inner Join returns only matched rows from both tables. Outer Join (Left/Right/Full) additionally returns unmatched rows with NULLs from one or both sides.
+**Q7: What is normalization? Explain 1NF, 2NF, 3NF.**
+Process of organizing data to reduce redundancy: 1NF requires atomic values, 2NF removes partial dependency on a composite key, 3NF removes transitive dependency between non-key columns.
 
-**8. How do you find the 2nd highest / Nth highest salary?**
-Using an Inline View with `ROWNUM` (after sorting), or with `DENSE_RANK()` (see [Section 21](#21-ranking-functions--row_number-rank-dense_rank)):
+**Q8: Difference between RANK, DENSE_RANK, and ROW_NUMBER?**
+ROW_NUMBER always gives unique sequential numbers with no ties; RANK gives the same rank to ties but skips subsequent ranks; DENSE_RANK gives the same rank to ties with no gap.
+
+**Q9: What is a correlated subquery?**
+A subquery that references a column from the outer query, and therefore executes once per row processed by the outer query, unlike a regular subquery which executes once.
+
+**Q10: What's the difference between UNION and UNION ALL?**
+UNION combines result sets and removes duplicate rows (slower due to implicit sorting); UNION ALL combines and keeps all rows including duplicates (faster).
+
+**Q11: How does Oracle's SEQUENCE differ from MySQL's AUTO_INCREMENT?**
+A SEQUENCE is a standalone, reusable database object generating values via `.NEXTVAL`/`.CURRVAL`, independent of any single table; AUTO_INCREMENT is a column attribute tied to one specific table, incrementing automatically on each insert with no manual call needed.
+
+**Q12: What happens if you PURGE a table that was never dropped (Oracle)?**
+Oracle throws `ORA-38307: object not in RECYCLEBIN` — the table must be DROPped first (sending it to the recycle bin) before it can be PURGEd. This entire recycle bin concept doesn't exist in MySQL — DROP TABLE is immediate and permanent there.
+
+**Q13: How does row-limiting/pagination differ between Oracle and MySQL?**
+Oracle traditionally uses ROWNUM in a wrapped subquery (or `OFFSET...FETCH` in 12c+); MySQL uses the much simpler `LIMIT n OFFSET m` clause directly in the query with no subquery wrapping required.
+
+**Q14: What is a trigger and when would you use one? Key syntax difference between Oracle and MySQL?**
+A stored block of code that runs automatically on INSERT/UPDATE/DELETE — used for auditing, enforcing complex business rules, or auto-populating columns. Oracle references changed values as `:OLD.col`/`:NEW.col` (colon prefix); MySQL uses `OLD.col`/`NEW.col` (no colon) and requires every trigger to be row-level (no statement-level triggers, unlike Oracle).
+
+**Q15: Why avoid over-indexing a table?**
+Every index must be updated on every INSERT/UPDATE/DELETE, so too many indexes slow down writes significantly even though they speed up reads — a classic space/write-speed vs read-speed trade-off, true in both Oracle and MySQL.
+
+[⬆ Back to top](#-table-of-contents)
+
+---
+
+## 29. LPAD/RPAD, Hierarchical Queries (LEVEL), Type Conversion & DBA Concepts
+
+### A. LPAD and RPAD
+
+Pad a string on the left/right up to a target length using a filler character (default filler is a space).
+
 ```sql
-SELECT * FROM (
-    SELECT e.*, ROWNUM r FROM (SELECT * FROM emp ORDER BY sal DESC) e
-) WHERE r = 2;
+LPAD(str, total_length, 'pad_char')
+RPAD(str, total_length, 'pad_char')
 ```
 
-**9. Why can't you use `WHERE ROWNUM = 2` directly?**
-Because `ROWNUM` is assigned **before** `ORDER BY` executes and row numbering starts fresh with each query, so a filter like `ROWNUM = 2` never matches (Oracle checks row 1 first, fails, and never gets to a "row 2"). You must first sort in an inline view, then apply `ROWNUM` in the outer query.
+```sql
+SELECT LPAD('45', 5, '0') FROM dual;    -- '00045'
+SELECT RPAD('45', 5, '0') FROM dual;    -- '45000'
+SELECT LPAD(ename, 10, '*') FROM emp;   -- right-aligns name, pads left with *
+SELECT LPAD('', 5, '*') || ename FROM emp;  -- indent for a report
 
-**10. What is a Correlated Subquery? How is it different from a Nested Subquery?**
-A Correlated Subquery references a column from the **outer query** and executes **once per outer row**. A Nested Subquery is fully independent, executes **once**, and its result is used by the outer query.
+-- Common real use: zero-pad employee IDs to a fixed width
+SELECT LPAD(empno, 6, '0') AS emp_code FROM emp;   -- 100 -> '000100'
 
-**11. What is the difference between HAVING and Subquery filtering?**
-`HAVING` filters **aggregated/grouped** results; a subquery in `WHERE` filters based on values computed from another query, before or independent of grouping.
+-- Common real use: mask all but last 4 digits of a phone/account number
+SELECT LPAD(SUBSTR(acct_no, -4), LENGTH(acct_no), '*') FROM accounts;
+-- e.g. acct_no '1234567890' -> '******7890'
+```
 
-**12. What does `(+)` mean in Oracle old-style joins?**
-It marks the "deficient" side of an outer join — the side that should be padded with NULLs for unmatched rows. `a.col = b.col(+)` is a LEFT OUTER JOIN; `a.col(+) = b.col` is a RIGHT OUTER JOIN.
+If the string is **already longer** than the target length, both functions **truncate** it to that length instead of padding.
+```sql
+SELECT LPAD('HELLO WORLD', 5) FROM dual;   -- 'HELLO' (truncated, not padded)
+```
 
-**13. Can a dropped table be recovered? How?**
-Yes — as long as it hasn't been purged, using `FLASHBACK TABLE tabname TO BEFORE DROP;`. Once `PURGE`d (or purged automatically by policy), it cannot be recovered.
+🐬 **MySQL:** `LPAD()` and `RPAD()` exist with **identical syntax and behavior** — no differences here, safe to use the same way in both.
 
-**14. What is the difference between `IN` and `EXISTS`?**
-`IN` compares a value against a **list** returned by the subquery (works best with smaller result sets). `EXISTS` merely checks whether the subquery returns **any row at all** (often faster for large/correlated subqueries since it can short-circuit).
+**Quick Q&A:**
+- **Q: LPAD vs RPAD — what's the difference?** LPAD pads/aligns on the left (adds filler before the string, right-justifying it); RPAD pads on the right (adds filler after, left-justifying it).
+- **Q: What happens if the string is longer than the padded length?** Oracle and MySQL both truncate it down to that length — no error is thrown.
+- **Q: Real-world use case for LPAD?** Zero-padding numeric IDs/invoice numbers to a fixed width, right-aligning columns in fixed-width report output, and masking sensitive data (e.g. showing only the last 4 digits of a card number).
 
-**15. What is Normalization? Why do we need Joins because of it?**
-Normalization splits data into multiple related tables to avoid redundancy and maintain data integrity. Because related data now lives in separate tables, **Joins** are required to bring that data back together meaningfully. See [Section 24](#24-normalization).
+---
 
-**16. What's the difference between `NVL` and `NVL2`?**
-`NVL(a, b)` → returns `b` if `a` is NULL, else returns `a`.
-`NVL2(a, b, c)` → returns `c` if `a` is NULL, else returns `b`.
+### B. Hierarchical Queries — CONNECT BY, PRIOR, LEVEL, START WITH (Oracle)
 
-**17. What is a Savepoint used for, and how is it different from Commit?**
-`SAVEPOINT` marks an intermediate point within an ongoing transaction that you can roll back to, without discarding the entire transaction. `COMMIT` permanently ends the transaction and makes all changes permanent — you can no longer roll back past it.
+Oracle's native way to query **tree-structured / recursive** data (org charts, category trees, bill-of-materials, folder structures) without needing a recursive CTE.
 
-**18. What is the difference between a Single Row and Multi Row Subquery?**
-A Single Row Subquery returns exactly one value and uses operators like `=`, `>`, `<`. A Multi Row Subquery returns multiple values and must use `IN`, `ANY`, `ALL`, or `EXISTS`.
+```sql
+CREATE TABLE emp2 (
+    empno   NUMBER PRIMARY KEY,
+    ename   VARCHAR2(20),
+    mgr     NUMBER
+);
+```
 
-**19. What happens if you `GRANT` a permission and the grantee queries the table directly without the schema prefix?**
-It throws `ORA-00942: table or view does not exist`, because the table belongs to another user's schema. The grantee must use `schema.tablename` (e.g. `scott.emp`) unless a synonym is created.
+| empno | ename | mgr |
+|---|---|---|
+| 1 | KING | NULL |
+| 2 | JONES | 1 |
+| 3 | SCOTT | 2 |
+| 4 | ADAMS | 3 |
+| 5 | BLAKE | 1 |
 
-**20. What is the purpose of `PURGE`, and what error do you get if you purge a table that was never dropped?**
-`PURGE` permanently removes a table from the recycle bin so it can no longer be flashed back. If the table was never dropped (i.e., not in the recycle bin), Oracle throws `ORA-38307: object not in RECYCLEBIN`.
+**Basic hierarchical query — top-down (managers → subordinates):**
+```sql
+SELECT LEVEL, ename, mgr
+FROM emp2
+START WITH mgr IS NULL          -- root/top of the tree
+CONNECT BY PRIOR empno = mgr    -- parent's empno = child's mgr
+ORDER BY LEVEL;
+```
 
-**21. What is the difference between a View and a Materialized View?**
-A View stores only the query definition and always pulls live data from the base table on every read. A Materialized View physically stores the query's result (a snapshot), making reads faster but requiring a manual/scheduled refresh (`EXEC DBMS_MVIEW.REFRESH`) to reflect base-table changes.
+| LEVEL | ename | mgr |
+|---|---|---|
+| 1 | KING | NULL |
+| 2 | JONES | 1 |
+| 2 | BLAKE | 1 |
+| 3 | SCOTT | 2 |
+| 4 | ADAMS | 3 |
 
-**22. What is the difference between `RANK()` and `DENSE_RANK()`?**
-Both give tied rows the same rank, but `RANK()` **skips** the next rank number(s) after a tie (1,2,2,4), while `DENSE_RANK()` leaves **no gap** (1,2,2,3). `ROW_NUMBER()` never ties at all — every row gets a unique sequential number regardless of duplicate values.
+- **`LEVEL`** — a pseudo-column that returns the depth of the current row in the tree (root = 1, its children = 2, and so on).
+- **`PRIOR`** — indicates which side of the condition belongs to the **parent row** in the previous level. `PRIOR empno = mgr` means "parent's empno equals this row's mgr".
+- **`START WITH`** — defines the root(s) of the tree (the condition identifying top-level rows).
+- **`CONNECT BY`** — defines the parent-child relationship used to walk down the tree.
 
-**23. Why can't `DENSE_RANK()`/`RANK()`/`ROW_NUMBER()` be used directly in a `WHERE` clause?**
-Because window/ranking functions are evaluated **after** `WHERE`, `GROUP BY`, and `HAVING` — at the point `WHERE` runs, the rank column doesn't exist yet. You must compute the rank in an inline view/subquery, then filter on it in the **outer** query.
+**Bottom-up traversal (subordinate → all managers above them):**
+```sql
+SELECT LEVEL, ename
+FROM emp2
+START WITH ename = 'ADAMS'
+CONNECT BY PRIOR mgr = empno    -- reversed: walk UP instead of down
+ORDER BY LEVEL;
+```
 
-**24. What is a Sequence, and are its generated numbers guaranteed to be gap-free?**
-A Sequence is a database object that generates numbers, typically for primary keys. It is **not** guaranteed gap-free — a rolled-back transaction still consumes (and permanently loses) that `NEXTVAL`.
+**Indenting output to visualize the tree (classic report style):**
+```sql
+SELECT LPAD(' ', (LEVEL-1)*2, ' ') || ename AS org_chart
+FROM emp2
+START WITH mgr IS NULL
+CONNECT BY PRIOR empno = mgr;
+```
+```
+KING
+  JONES
+    SCOTT
+      ADAMS
+  BLAKE
+```
+> This is the **LPAD + LEVEL combo** — a very commonly asked "print an org chart" interview question.
 
-**25. What's the difference between a Trigger and a Constraint?**
-A **Constraint** (like `CHECK`, `FOREIGN KEY`) enforces simple, declarative rules on a column/table with minimal overhead. A **Trigger** can enforce far more complex, custom business logic (via PL/SQL) but adds overhead and complexity, and can be harder to debug since it fires silently.
+**Other hierarchical-query tools:**
+| Function/Clause | Purpose |
+|---|---|
+| `CONNECT_BY_ROOT` | Returns the root ancestor's value for any row |
+| `SYS_CONNECT_BY_PATH(col, 'sep')` | Builds the full path from root to current row |
+| `CONNECT BY NOCYCLE` | Prevents infinite loops if the data has a cycle |
+| `ORDER SIBLINGS BY col` | Sorts children within the same parent, without breaking the tree order (plain ORDER BY would break hierarchy order) |
 
-**26. Does adding an index always improve performance?**
-No — it improves **read** performance on large tables with high-selectivity columns, but it **slows down writes** (every `INSERT`/`UPDATE`/`DELETE` must also update the index) and adds storage overhead. On small tables or low-selectivity columns, it may provide little to no benefit.
+```sql
+SELECT ename, SYS_CONNECT_BY_PATH(ename, ' > ') AS path
+FROM emp2
+START WITH mgr IS NULL
+CONNECT BY PRIOR empno = mgr;
+-- ADAMS -> KING > JONES > SCOTT > ADAMS
+```
 
-**27. When would you choose a Correlated Subquery over a Window Function (`PARTITION BY`), even though both can compare a row to its group?**
-When you only need a **yes/no filter** ("is this row above/below the group's aggregate") and don't need to know the row's exact **rank/position**. If you need the actual rank (2nd highest, Top N per group), a Window Function is the right tool instead. See the full [Decision Guide in Section 26](#26--decision-guide--when-to-use-what).
+🐬 **MySQL equivalent:** None of `CONNECT BY`, `START WITH`, `PRIOR`, `LEVEL`, `SYS_CONNECT_BY_PATH` exist in MySQL — this entire syntax family is **Oracle-only**. MySQL (8.0+) uses a **recursive CTE** instead, and must build its own "level" counter manually:
+
+```sql
+WITH RECURSIVE org_chart AS (
+    -- anchor: the root row(s)
+    SELECT empno, ename, mgr, 1 AS lvl, CAST(ename AS CHAR(200)) AS path
+    FROM emp2
+    WHERE mgr IS NULL
+
+    UNION ALL
+
+    -- recursive step: join children to their parent's row in the CTE
+    SELECT e.empno, e.ename, e.mgr, o.lvl + 1, CONCAT(o.path, ' > ', e.ename)
+    FROM emp2 e
+    JOIN org_chart o ON e.mgr = o.empno
+)
+SELECT lvl, LPAD('', (lvl-1)*2, ' ') || ename AS org_chart, path
+FROM org_chart
+ORDER BY lvl;
+```
+
+| Oracle | 🐬 MySQL |
+|---|---|
+| `START WITH ... CONNECT BY PRIOR` | `WITH RECURSIVE cte AS (anchor UNION ALL recursive-join)` |
+| `LEVEL` (automatic) | Manual counter column (`lvl + 1` in the recursive branch) |
+| `SYS_CONNECT_BY_PATH` | Manual string building with `CONCAT()` in the recursive branch |
+| `CONNECT BY NOCYCLE` | Must add your own cycle-guard (e.g. a max-depth condition or a "visited" path check) |
+| Available since Oracle 2 (very old feature) | Recursive CTEs only from MySQL **8.0+** — completely unavailable before that |
+
+**Quick Q&A:**
+- **Q: What does LEVEL represent in a hierarchical query?** The depth of the current row within the tree — the root row(s) from START WITH are LEVEL 1, their direct children are LEVEL 2, and so on.
+- **Q: Difference between CONNECT BY PRIOR empno = mgr and CONNECT BY PRIOR mgr = empno?** The first walks **top-down** (parent → children); the second walks **bottom-up** (child → all its ancestors) — PRIOR marks which side is the "parent" row from the previous level.
+- **Q: How do you avoid an infinite loop in a hierarchical query if the data has a cycle?** Use `CONNECT BY NOCYCLE`, which stops traversal when a cycle is detected instead of looping forever.
+- **Q: How would you replicate an Oracle CONNECT BY query in MySQL?** With a recursive CTE (`WITH RECURSIVE`), available from MySQL 8.0 onward — manually tracking depth and path since MySQL has no built-in LEVEL or SYS_CONNECT_BY_PATH.
+
+---
+
+### C. Type Conversion — Full Picture (Number ↔ Date ↔ String)
+
+Oracle has **three core conversion functions**, each with dozens of possible **format models**.
+
+#### TO_CHAR — Number/Date → String
+
+```sql
+-- Number formatting
+SELECT TO_CHAR(1234567.891, '9,999,999.99') FROM dual;   -- '1,234,567.89'
+SELECT TO_CHAR(45, '000') FROM dual;                       -- '045'
+SELECT TO_CHAR(1250, '$9,999') FROM dual;                  -- '$1,250'
+
+-- Date formatting
+SELECT TO_CHAR(SYSDATE, 'DD-MON-YYYY') FROM dual;    -- '22-AUG-2026'
+SELECT TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI:SS') FROM dual;  -- '22/08/2026 14:35:10'
+SELECT TO_CHAR(SYSDATE, 'DAY') FROM dual;            -- 'SATURDAY'
+SELECT TO_CHAR(SYSDATE, 'Month YYYY') FROM dual;     -- 'August    2026'
+```
+
+| Format code | Meaning |
+|---|---|
+| `YYYY` / `YY` | 4-digit / 2-digit year |
+| `MM` / `MON` / `MONTH` | Numeric / short / full month |
+| `DD` / `DY` / `DAY` | Day of month / short weekday / full weekday |
+| `HH24` / `HH` | 24-hour / 12-hour |
+| `MI` / `SS` | Minutes / seconds |
+| `9` | Digit, suppresses leading zeros |
+| `0` | Digit, keeps leading zeros |
+| `$` `,` `.` | Literal currency/thousands/decimal symbols |
+
+#### TO_DATE — String → Date
+
+```sql
+SELECT TO_DATE('22-08-2026', 'DD-MM-YYYY') FROM dual;
+SELECT TO_DATE('2026/08/22', 'YYYY/MM/DD') FROM dual;
+SELECT TO_DATE('August 22, 2026', 'Month DD, YYYY') FROM dual;
+```
+> ⚠️ The **format mask must match the input string's actual layout** exactly, or Oracle throws `ORA-01858` (not a valid month) or `ORA-01861` (literal does not match format string).
+
+#### TO_NUMBER — String → Number
+
+```sql
+SELECT TO_NUMBER('1,234.56', '9,999.99') FROM dual;   -- 1234.56
+SELECT TO_NUMBER('$500', '$999') FROM dual;             -- 500
+SELECT TO_NUMBER('123') FROM dual;                       -- 123 (format mask optional if plain digits)
+```
+
+#### CAST — ANSI-standard alternative
+
+`CAST` is the SQL-standard conversion function, works across most databases including both Oracle and MySQL, but offers less formatting control than TO_CHAR/TO_DATE.
+
+```sql
+SELECT CAST('123' AS NUMBER) FROM dual;
+SELECT CAST(sal AS VARCHAR2(20)) FROM emp;
+SELECT CAST('2026-08-22' AS DATE) FROM dual;
+```
+
+#### Implicit vs Explicit Conversion
+
+- **Implicit conversion** — Oracle/MySQL silently convert types when needed (e.g. comparing a NUMBER column to a string literal `WHERE empno = '101'`). Works, but is **risky**: it can silently return wrong results, prevent index usage (index becomes unusable when a function/conversion wraps the column), and mask data-quality bugs.
+- **Explicit conversion** — using TO_CHAR/TO_DATE/TO_NUMBER/CAST yourself. **Always preferred** in production code and definitely in interviews, since it's predictable and keeps indexes usable.
+
+```sql
+-- Risky (implicit) — Oracle silently converts hiredate to a string to compare
+SELECT * FROM emp WHERE hiredate = '22-AUG-26';
+
+-- Safe (explicit) — you control exactly how the conversion happens
+SELECT * FROM emp WHERE hiredate = TO_DATE('22-08-2026','DD-MM-YYYY');
+```
+
+🐬 **MySQL equivalents — full mapping:**
+
+| Oracle | 🐬 MySQL |
+|---|---|
+| `TO_CHAR(date, 'fmt')` | `DATE_FORMAT(date, '%d-%b-%Y')` |
+| `TO_CHAR(number, 'fmt')` | `FORMAT(number, decimals)` (limited) or manual `CONCAT` |
+| `TO_DATE('str', 'fmt')` | `STR_TO_DATE('str', '%d-%m-%Y')` |
+| `TO_NUMBER('str')` | `CAST(str AS SIGNED)` / `CAST(str AS DECIMAL(p,s))` or `str + 0` (quick informal cast) |
+| `CAST(val AS type)` | `CAST(val AS type)` — same, but MySQL's target type list is narrower (`CHAR`, `DATE`, `DATETIME`, `DECIMAL`, `SIGNED`, `UNSIGNED`, `BINARY`, `TIME`, `JSON`) |
+| Format codes: `YYYY MM DD HH24 MI SS` | Format codes: `%Y %m %d %H %i %s` (percent-prefixed, different letters) |
+
+```sql
+-- MySQL versions of the same conversions
+SELECT DATE_FORMAT(NOW(), '%d-%b-%Y') ;             -- '22-Aug-2026'
+SELECT STR_TO_DATE('22-08-2026', '%d-%m-%Y');
+SELECT CAST('123' AS SIGNED);
+SELECT '123' + 0;                                     -- quick implicit-to-explicit numeric trick, common in MySQL scripts
+```
+
+**Quick Q&A:**
+- **Q: Difference between implicit and explicit conversion, and why does it matter for performance?** Implicit conversion happens automatically and can silently disable an index on the converted column (since the optimizer can't use the index once a function wraps it), and can produce wrong results if the assumed conversion isn't what you intended; explicit conversion is predictable, index-safe (when done correctly on the search value, not the column), and self-documenting.
+- **Q: What error does Oracle throw for a malformed TO_DATE call?** `ORA-01858` if a numeric/text mismatch occurs (e.g. letters where digits expected) or `ORA-01861` if the literal string doesn't match the given format mask's length/pattern.
+- **Q: How do you convert a string to a number in both Oracle and MySQL?** Oracle: `TO_NUMBER('123')`; MySQL: `CAST('123' AS SIGNED)` or `CAST('123' AS DECIMAL(10,2))` for decimals, or informally `'123' + 0`.
+- **Q: Why should you avoid comparing a DATE column to a string literal directly?** It relies on implicit conversion whose exact format depends on session NLS/date settings (Oracle) or the SQL mode (MySQL) — it can behave differently across environments/servers, so always wrap the literal explicitly with TO_DATE/STR_TO_DATE instead.
+
+---
+
+### D. DBA-Level / Production Concepts
+
+These come up in interviews once you're past pure query-writing and into "how would this run in production" territory.
+
+#### 1) Tablespaces & Storage (Oracle)
+Oracle organizes physical storage into **tablespaces** — logical containers mapped to physical datafiles on disk. Every table/index lives inside a tablespace.
+```sql
+CREATE TABLESPACE app_data
+DATAFILE 'app_data01.dbf' SIZE 500M AUTOEXTEND ON;
+
+CREATE TABLE emp (...) TABLESPACE app_data;
+```
+🐬 **MySQL:** InnoDB uses its own tablespace model (`innodb_file_per_table` — by default each table gets its own `.ibd` file), conceptually similar but far less manually managed day-to-day than Oracle's.
+
+#### 2) Explain Plan / Query Execution Plan
+Shows **how** the database will execute a query — which indexes it uses, join order, join method, estimated cost/rows. Essential for performance tuning.
+```sql
+-- Oracle
+EXPLAIN PLAN FOR SELECT * FROM emp WHERE deptno = 10;
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
+```
+🐬 **MySQL:**
+```sql
+EXPLAIN SELECT * FROM emp WHERE deptno = 10;
+-- or, for actual runtime stats:
+EXPLAIN ANALYZE SELECT * FROM emp WHERE deptno = 10;   -- 8.0.18+
+```
+
+#### 3) Redo Logs / Undo (Oracle) vs Binary Log / Undo (MySQL InnoDB)
+| Concept | Oracle | 🐬 MySQL (InnoDB) |
+|---|---|---|
+| Records changes for crash recovery / replay | Redo Log | Redo Log (InnoDB has its own, similar concept) |
+| Lets you ROLLBACK an uncommitted transaction | Undo Segments (in the SYSTEM/UNDO tablespace) | Undo Log (InnoDB) |
+| Used for replication / point-in-time recovery | Archive Log (archived redo) | Binary Log (`binlog`) |
+
+#### 4) Locking & Concurrency
+- **Row-level locking** — locks only the specific row(s) being modified (default in Oracle, and in MySQL's InnoDB engine). MyISAM only supports **table-level locking**, which is a major reason InnoDB is preferred for concurrent write-heavy workloads.
+- **Deadlock** — two transactions each waiting on a lock the other holds. Both Oracle and MySQL automatically detect deadlocks and roll back one of the transactions with an error, rather than waiting forever.
+```sql
+-- Check current locks (Oracle)
+SELECT * FROM v$lock;
+
+-- Check current locks (MySQL, InnoDB)
+SELECT * FROM information_schema.innodb_trx;
+SHOW ENGINE INNODB STATUS;
+```
+
+#### 5) Backup & Recovery
+| Concept | Oracle | 🐬 MySQL |
+|---|---|---|
+| Full logical backup tool | `expdp` / `impdp` (Data Pump) or legacy `exp`/`imp` | `mysqldump` or `mysqlpump` |
+| Physical/hot backup tool | RMAN (Recovery Manager) | `mysqlbackup` / `xtrabackup` (Percona) |
+| Point-in-time recovery | Uses archived redo logs | Uses binary logs |
+
+#### 6) Partitioning
+Splits a large table into smaller physical pieces (partitions) for performance and manageability, while still queryable as one logical table.
+```sql
+-- Oracle: range partition by year
+CREATE TABLE sales (
+    sale_id NUMBER,
+    sale_date DATE,
+    amount NUMBER
+)
+PARTITION BY RANGE (sale_date) (
+    PARTITION p2024 VALUES LESS THAN (TO_DATE('01-JAN-2025','DD-MON-YYYY')),
+    PARTITION p2025 VALUES LESS THAN (TO_DATE('01-JAN-2026','DD-MON-YYYY')),
+    PARTITION p2026 VALUES LESS THAN (MAXVALUE)
+);
+```
+🐬 **MySQL:** Also supports `PARTITION BY RANGE`, `LIST`, `HASH`, `KEY` with broadly similar syntax — but with more restrictions (e.g. the partitioning column generally must be part of every unique key, including the primary key).
+
+#### 7) User/Role Management & Security
+```sql
+-- Oracle: roles group privileges for easier management
+CREATE ROLE app_readonly;
+GRANT SELECT ON emp TO app_readonly;
+GRANT app_readonly TO ramesh;
+```
+🐬 **MySQL (roles only from 8.0+):**
+```sql
+CREATE ROLE 'app_readonly';
+GRANT SELECT ON db1.emp TO 'app_readonly';
+GRANT 'app_readonly' TO 'ramesh'@'localhost';
+SET DEFAULT ROLE 'app_readonly' TO 'ramesh'@'localhost';
+```
+> MySQL roles were only introduced in **8.0** — earlier versions had no role concept at all, privileges had to be granted individually to every user.
+
+#### 8) Data Dictionary / System Catalog Views
+Every RDBMS exposes metadata about its own objects through system views.
+| Purpose | Oracle | 🐬 MySQL |
+|---|---|---|
+| List all tables (current user) | `SELECT * FROM user_tables;` | `SHOW TABLES;` or `SELECT * FROM information_schema.tables;` |
+| List all columns of a table | `SELECT * FROM user_tab_columns WHERE table_name='EMP';` | `SHOW COLUMNS FROM emp;` or `information_schema.columns` |
+| List constraints | `user_constraints` | `information_schema.table_constraints` |
+| List indexes | `user_indexes` | `SHOW INDEX FROM emp;` |
+| Currently running sessions | `v$session` | `SHOW PROCESSLIST;` or `information_schema.processlist` |
+
+**Quick Q&A:**
+- **Q: What's the difference between a redo log and an undo log (Oracle)?** Redo logs record changes for crash recovery/replaying committed work; undo logs (segments) store the "before" image of data so an uncommitted transaction can be rolled back, and also power read consistency for other sessions.
+- **Q: Why is InnoDB preferred over MyISAM for transactional MySQL applications?** InnoDB supports row-level locking, transactions (COMMIT/ROLLBACK), and foreign keys, all of which MyISAM lacks (MyISAM only does table-level locking and has no transaction support at all).
+- **Q: What does EXPLAIN / EXPLAIN PLAN show you, and why does it matter?** It shows the execution plan the optimizer intends to use — join order, join method, which indexes (if any) are used, and estimated cost/row counts — which is the primary tool for diagnosing a slow query.
+- **Q: What's the purpose of table partitioning?** It splits a very large table into smaller physical segments (by range, list, or hash) so queries that target a subset of the data (e.g. one date range) can skip scanning irrelevant partitions entirely, and so maintenance operations (like archiving old data) can act on just one partition.
+- **Q: How would you find which queries are currently running/blocking on the server?** Oracle: query `v$session` and `v$lock`; MySQL: `SHOW PROCESSLIST;` or query `information_schema.innodb_trx` / `SHOW ENGINE INNODB STATUS;` for InnoDB-specific lock/transaction detail.
 
 [⬆ Back to top](#-table-of-contents)
